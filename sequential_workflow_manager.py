@@ -1,5 +1,5 @@
 from semantic_kernel import Kernel
-from semantic_kernel.agents import AzureAIAgent
+from semantic_kernel.agents import AzureAIAgent, AzureAIAgentThread
 from semantic_kernel.contents import ChatMessageContent
 from foundry_agent_factory import FoundryAgentFactory
 from typing import Dict, List, Optional, Any
@@ -15,7 +15,7 @@ class SequentialWorkflowManager:
         self.logger = logging.getLogger(__name__)
         
         # Workflow state
-        self.shared_thread = None
+        self.shared_thread: Optional[AzureAIAgentThread] = None
         self.current_workflow: Optional[List[AzureAIAgent]] = None
     
     async def create_document_analysis_workflow(self) -> List[AzureAIAgent]:
@@ -48,59 +48,65 @@ class SequentialWorkflowManager:
             self.current_workflow = await self.create_document_analysis_workflow()
         
         try:
+            # Ensure the foundry factory client is initialized
+            await self.foundry_factory._ensure_agent_client()
+            
+            # Create shared thread for both agents if not exists
+            if not self.shared_thread:
+                # Create AzureAIAgentThread wrapper using the agent client
+                self.shared_thread = AzureAIAgentThread(client=self.foundry_factory.agent_client)
+                self.logger.info(f"Created shared AzureAIAgentThread wrapper")
+            
             # Prepare input message
             input_text = self._prepare_workflow_input(input_data)
-            input_message = ChatMessageContent(
-                role="user",
-                content=input_text
-            )
             
-            # Execute sequential workflow - invoke agents one by one
+            # Execute sequential workflow using the shared thread
             responses = []
             agent_results = {}
             
-            self.logger.info("Starting sequential agent execution...")
-            current_input = input_text
+            self.logger.info("Starting sequential agent execution with shared thread...")
             
             for i, agent in enumerate(self.current_workflow):
                 try:
-                    self.logger.info(f"Executing agent {i+1}/{len(self.current_workflow)}: {type(agent)}")
+                    self.logger.info(f"Executing agent {i+1}/{len(self.current_workflow)} with shared thread")
                     
-                    # Create message for current agent
-                    agent_message = ChatMessageContent(
-                        role="user",
-                        content=current_input
-                    )
+                    # Prepare message for this agent
+                    if i == 0:
+                        # First agent gets the original input
+                        message_content = input_text
+                    else:
+                        # Subsequent agents get continuation instructions
+                        message_content = "Please continue the analysis based on the previous agent's work and provide additional insights."
                     
-                    # Invoke the agent with timeout handling
-                    self.logger.info(f"Invoking agent with message: {agent_message.content[:100]}...")
-                    
-                    # Use the agent's invoke method with timeout handling
-                    agent_responses = []
+                    # Use get_response method with AzureAIAgentThread
                     try:
-                        # Add a timeout wrapper around the agent invoke
+                        # Add a timeout wrapper around the agent get_response
                         async with asyncio.timeout(120):  # 2 minute timeout
-                            async for response in agent.invoke(agent_message):
-                                if hasattr(response, 'content'):
-                                    # Handle ChatMessageContent objects
-                                    content = response.content
-                                    if isinstance(content, str):
-                                        agent_responses.append(content)
-                                    else:
-                                        agent_responses.append(str(content))
+                            response = await agent.get_response(messages=message_content, thread=self.shared_thread)
+                            
+                            # Update thread reference (important for thread continuity)
+                            self.shared_thread = response.thread
+                            
+                            # Extract response content properly from ChatMessageContent
+                            if hasattr(response, 'content'):
+                                # Handle ChatMessageContent object
+                                if hasattr(response.content, 'content'):
+                                    response_content = response.content.content
+                                elif isinstance(response.content, str):
+                                    response_content = response.content
                                 else:
-                                    agent_responses.append(str(response))
+                                    response_content = str(response.content)
+                            else:
+                                response_content = str(response)
+                                
+                            self.logger.info(f"Agent {i+1} response received: {len(response_content)} characters")
+                                
                     except asyncio.TimeoutError:
                         self.logger.warning(f"Agent {i+1} timed out after 120 seconds, continuing with partial results...")
-                        if not agent_responses:
-                            agent_responses.append(f"Agent {i+1} timed out - no response received")
+                        response_content = f"Agent {i+1} timed out - no response received"
                     except Exception as agent_error:
                         self.logger.warning(f"Agent {i+1} encountered error: {agent_error}, continuing...")
-                        if not agent_responses:
-                            agent_responses.append(f"Agent {i+1} error: {str(agent_error)}")
-                    
-                    # Combine all responses from this agent
-                    response_content = "\n".join(agent_responses) if agent_responses else "No response"
+                        response_content = f"Agent {i+1} error: {str(agent_error)}"
                     
                     agent_name = f"agent_{i+1}"  # Use index-based naming for now
                     if hasattr(agent, 'name'):
@@ -111,15 +117,13 @@ class SequentialWorkflowManager:
                     response_data = {
                         "agent": agent_name,
                         "content": response_content,
-                        "timestamp": self._get_timestamp()
+                        "timestamp": self._get_timestamp(),
+                        "thread_id": getattr(self.shared_thread, 'id', 'shared_thread')
                     }
                     responses.append(response_data)
                     agent_results[agent_name] = response_content
                     
-                    # Use this agent's output as input for the next agent
-                    current_input = f"Previous analysis:\n{response_content}\n\nPlease continue the analysis based on the above information."
-                    
-                    self.logger.info(f"Received response from {agent_name}: {len(response_content)} characters")
+                    self.logger.info(f"Received response from {agent_name}: {len(str(response_content))} characters")
                     
                 except Exception as e:
                     self.logger.error(f"Error executing agent {i+1}: {e}")
@@ -142,13 +146,15 @@ class SequentialWorkflowManager:
             return {
                 "success": True,
                 "workflow_type": "sequential_foundry_agents",
+                "shared_thread_id": getattr(self.shared_thread, 'id', 'shared_thread'),
                 "agents_used": [f"agent_{i+1}" for i in range(len(self.current_workflow))],
                 "responses": responses,
                 "structured_result": structured_result,
                 "execution_summary": {
                     "total_agents": len(self.current_workflow),
                     "successful_responses": len(responses),
-                    "sequential_execution": True
+                    "sequential_execution": True,
+                    "shared_thread": True
                 }
             }
             
@@ -167,31 +173,28 @@ class SequentialWorkflowManager:
             raise ValueError("No active workflow. Execute workflow first.")
         
         try:
-            # Execute agents sequentially with the additional input
+            # Execute agents sequentially using get_response with the shared thread
             responses = []
-            current_input = additional_input
             
             for i, agent in enumerate(self.current_workflow):
                 try:
-                    continue_message = ChatMessageContent(
-                        role="user",
-                        content=current_input
-                    )
+                    # Use get_response method with AzureAIAgentThread
+                    response = await agent.get_response(messages=additional_input, thread=self.shared_thread)
                     
-                    # Handle async generator response
-                    agent_responses = []
-                    async for response in agent.invoke(continue_message):
-                        if hasattr(response, 'content'):
-                            # Handle ChatMessageContent objects  
-                            content = response.content
-                            if isinstance(content, str):
-                                agent_responses.append(content)
-                            else:
-                                agent_responses.append(str(content))
+                    # Update thread reference (important for thread continuity)
+                    self.shared_thread = response.thread
+                    
+                    # Extract response content properly from ChatMessageContent
+                    if hasattr(response, 'content'):
+                        # Handle ChatMessageContent object
+                        if hasattr(response.content, 'content'):
+                            response_content = response.content.content
+                        elif isinstance(response.content, str):
+                            response_content = response.content
                         else:
-                            agent_responses.append(str(response))
-                    
-                    response_content = "\n".join(agent_responses) if agent_responses else "No response"
+                            response_content = str(response.content)
+                    else:
+                        response_content = str(response)
                     
                     agent_name = f"agent_{i+1}"
                     if hasattr(agent, 'name'):
@@ -200,12 +203,10 @@ class SequentialWorkflowManager:
                     response_data = {
                         "agent": agent_name,
                         "content": response_content,
-                        "timestamp": self._get_timestamp()
+                        "timestamp": self._get_timestamp(),
+                        "thread_id": getattr(self.shared_thread, 'id', 'shared_thread')
                     }
                     responses.append(response_data)
-                    
-                    # Chain the responses
-                    current_input = f"Previous analysis:\n{response_content}\n\nContinue analysis:"
                     
                 except Exception as e:
                     self.logger.error(f"Error in continue conversation for agent {i+1}: {e}")
@@ -214,7 +215,8 @@ class SequentialWorkflowManager:
                 "success": True,
                 "responses": responses,
                 "conversation_continued": True,
-                "workflow_type": "continued_sequential"
+                "workflow_type": "continued_sequential",
+                "shared_thread_id": getattr(self.shared_thread, 'id', 'shared_thread')
             }
             
         except Exception as e:
@@ -311,8 +313,16 @@ class SequentialWorkflowManager:
         from datetime import datetime
         return datetime.now().isoformat()
     
-    def reset_workflow(self):
+    async def reset_workflow(self):
         """Reset the workflow state for a new analysis"""
+        # Clean up the shared thread if it exists
+        if self.shared_thread:
+            try:
+                await self.shared_thread.delete()
+                self.logger.info("Deleted shared thread")
+            except Exception as e:
+                self.logger.warning(f"Error deleting shared thread: {e}")
+        
         self.shared_thread = None
         self.current_workflow = None
         self.logger.info("Workflow state reset")
@@ -321,5 +331,7 @@ class SequentialWorkflowManager:
         """Get current workflow status"""
         return {
             "has_active_workflow": self.current_workflow is not None,
+            "has_shared_thread": self.shared_thread is not None,
+            "shared_thread_id": getattr(self.shared_thread, 'id', None) if self.shared_thread else None,
             "agents_count": len(self.current_workflow) if self.current_workflow else 0
         }

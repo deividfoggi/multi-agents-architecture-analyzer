@@ -141,7 +141,7 @@ async def lifespan(app: FastAPI):
     global processor_instance
     
     # Startup
-    logger.info("Starting Essay Evaluation API")
+    logger.info("Starting API")
     try:
         env_vars = validate_environment_variables()
         

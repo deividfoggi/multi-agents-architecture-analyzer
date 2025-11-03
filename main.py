@@ -17,7 +17,7 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "8080"))
     reload = os.getenv("RELOAD", "false").lower() == "true"
     
-    logger.info(f"Starting Essay Evaluation API server on {host}:{port}")
+    logger.info(f"Starting API server on {host}:{port}")
     logger.info(f"Reload mode: {reload}")
     logger.info("Using standard asyncio loop to avoid uvloop conflicts")
     
