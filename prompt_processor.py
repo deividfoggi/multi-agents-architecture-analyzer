@@ -1,0 +1,138 @@
+import os
+import yaml
+import logging
+import json
+import gc
+import asyncio
+from semantic_kernel.functions import KernelArguments
+from semantic_kernel.connectors.ai.prompt_execution_settings import PromptExecutionSettings
+from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
+from kernel import ProviderType, KernelFactory
+from blob_client import AzureBlobTemplateClient
+from local_template_client import LocalTemplateClient
+from post_evaluation import PostEvaluation
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+class PromptProcessor:
+    def __init__(self, deployment_name: str, api_key: str, endpoint: str = None, api_version: str = None, provider_type: str = "azure_openai"):
+        # Create kernel directly without complex provider injection
+        self.kernel = KernelFactory.create_kernel(
+            ProviderType["AZURE_AI_INFERENCE"],
+            deployment_name=deployment_name,
+            api_key=api_key,
+            endpoint=endpoint,
+            api_version=api_version
+        )
+        
+        # Register the PostEvaluation plugin
+        self._register_plugins()
+
+    def _register_plugins(self):
+        """Register all plugins that can be called from prompts."""
+        self.kernel.add_plugin(
+            PostEvaluation(), "PostEvaluationPlugin"
+        )
+        logger.info("PostEvaluation plugin registered successfully")
+
+    async def process_payload(self, payload) -> str:
+        # payload is now a JSON object (dict or str)
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+        
+        skills_list = payload.get("skills_list", [])
+        essay = payload.get("essay", "")
+        
+        # Fetch template from local file or Azure Blob Storage based on configuration
+        use_local_template = os.getenv("USE_LOCAL_TEMPLATE", "true").lower() == "true"
+        
+        if use_local_template:
+            logger.info("Using local template client")
+            template_client = LocalTemplateClient()
+            yaml_content = template_client.get_template()
+        else:
+            logger.info("Using Azure Blob template client")
+            blob_client = AzureBlobTemplateClient()
+            yaml_content = blob_client.get_template()
+        
+        # Parse the YAML to get the template and execution settings
+        template_config = yaml.safe_load(yaml_content)
+        template_text = template_config["template"]
+
+        
+        # Create function directly from template text
+        semantic_function = self.kernel.add_function(
+            function_name="evaluate_essay",
+            plugin_name="evaluate_essay",
+            prompt=yaml_content,
+            template_format="handlebars"
+        )
+
+        # Convert skills_list to JSON string for the function call
+        skills_json = json.dumps(skills_list) if isinstance(skills_list, list) else str(skills_list)
+        
+        arguments = KernelArguments(
+            settings=PromptExecutionSettings(function_choice_behavior=FunctionChoiceBehavior.Auto()),
+            skills_list=skills_json,
+            essay=essay
+        )
+
+        # Handle potential event loop conflicts
+        try:
+            response = await self.kernel.invoke(semantic_function, arguments)
+        except RuntimeError as e:
+            if "event loop" in str(e).lower() or "patch" in str(e).lower() or "uvloop" in str(e).lower():
+                logger.error(f"Event loop conflict detected: {e}")
+                logger.error("This is likely due to uvloop conflicts. Please restart the server with: uvicorn api:app --host 0.0.0.0 --port 8080 --loop asyncio")
+                raise RuntimeError(f"Event loop conflict: {e}. Restart server with --loop asyncio flag.")
+            else:
+                raise
+        
+        return response
+
+    async def cleanup(self):
+        """
+        Clean up resources by forcing cleanup of aiohttp sessions.
+        This approach doesn't rely on internal Kernel APIs.
+        """
+        try:
+            # Import here to avoid import issues if aiohttp isn't available
+            import aiohttp
+            
+            # Force cleanup of any unclosed aiohttp ClientSession objects
+            # This is a more aggressive approach that scans all objects
+            for obj in gc.get_objects():
+                if isinstance(obj, aiohttp.ClientSession):
+                    if not obj.closed:
+                        try:
+                            await obj.close()
+                            logger.debug("Closed unclosed aiohttp ClientSession")
+                        except Exception as e:
+                            logger.debug(f"Error closing aiohttp session: {e}")
+            
+            # Clear kernel reference and force garbage collection
+            self.kernel = None
+            gc.collect()
+            
+            logger.debug("PromptProcessor cleanup completed")
+            
+        except ImportError:
+            # aiohttp not available, just clear kernel reference
+            self.kernel = None
+            gc.collect()
+            logger.debug("PromptProcessor cleanup completed (no aiohttp cleanup)")
+        except Exception as cleanup_error:
+            logger.warning(f"Error during PromptProcessor cleanup: {cleanup_error}")
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.cleanup()
