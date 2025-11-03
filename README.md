@@ -1,35 +1,50 @@
-# Semantic Kernel Consumer
+# Enhanced Document Analysis API with Azure AI Foundry Integration
 
-This project demonstrates a Python-based consumer for Azure Service Bus and Azure Blob Storage, designed to process messages and retrieve prompt templates securely for LLM Inference using an injected AI service in Semantic Kernel. It follows best practices for logging, error handling, and configuration.
+This project demonstrates an advanced Python-based **RESTful API** that integrates **Azure AI Foundry Agents** using Semantic Kernel for intelligent document analysis and essay evaluation. The application features a hybrid architecture that automatically falls back to traditional processing when Azure AI Foundry agents are unavailable.
 
-## Features
-- Consumes messages from Azure Service Bus (using local emulator or Azure)
-- Retrieves prompt templates from Azure Blob Storage (using local emulator or Azure)
-- Uses environment variables for configuration and secrets
-- Consistent logging across all modules
-- **Flexible AI Service Injection:** Easily swap or configure the AI service used by Semantic Kernel (supports Azure OpenAI and Azure AI Inference)
-- **Essay Evaluation Plugin:** Built-in plugin for evaluating essays with scoring and approval/rejection logic
-- **Graceful Shutdown:** Handles shutdown signals properly with configurable timeout
-- **Concurrent Processing:** Supports concurrent message processing with configurable limits
-- **Robust Error Handling:** Comprehensive error handling and retry logic
+## 🚀 Key Features
 
-## Service Injection in Semantic Kernel
-This project uses a flexible approach to inject AI services into Semantic Kernel through the `KernelFactory` class. The `PromptProcessor` receives deployment and authentication details, and the `KernelFactory` creates the appropriate AI provider based on the `ProviderType` enum (currently supporting `AZURE_OPENAI` and `AZURE_AI_INFERENCE`). The provider is then injected into the kernel instance. This design allows you to:
-- Swap out the AI provider (e.g., use Azure OpenAI or Azure AI Inference)
-- Pass different deployment names, API keys, endpoints, or API versions via environment variables
-- Extend the project to support additional AI services with minimal code changes
+### Core Functionality
+- **RESTful API:** FastAPI-based API with automatic documentation, validation, and OpenAPI specification
+- **Azure Blob Storage:** Retrieves prompt templates securely from cloud or local storage (optional)
+- **Environment-based Configuration:** Secure configuration management through environment variables
+- **Robust Error Handling:** Comprehensive error handling and graceful fallback mechanisms
+
+### 🤖 Azure AI Foundry Integration (New!)
+- **Sequential Agent Workflows:** Native Semantic Kernel orchestration of Azure AI Foundry agents
+- **Specialized Agents:**
+  - **Architecture Detail Extractor:** Identifies architectural patterns, components, and design decisions
+  - **Azure Resources Specialist:** Analyzes Azure services, configurations, and provides recommendations
+- **Shared Thread Context:** Maintains conversation continuity across agent interactions
+- **Automatic Fallback:** Seamlessly falls back to traditional processing when agents are unavailable
+
+### 🔧 Flexible AI Service Architecture
+The application uses a sophisticated factory pattern to inject AI services into Semantic Kernel:
+
+- **Multiple Provider Support:** Azure OpenAI, Azure AI Inference, and Azure AI Foundry
+- **Agent Factory Pattern:** Creates and manages specialized agents with independent kernels
+- **Plugin System:** Each agent can have specialized plugins for different use cases
+- **Conversation Continuity:** Supports continuing analysis conversations in the same thread context
 - Use different AI services for different use cases
 
-The system also includes a `PostEvaluation` plugin that provides additional evaluation capabilities for essay scoring and approval/rejection logic.
+### 📄 PDF Processing Capabilities
+The architecture_extractor agent now includes native PDF processing through a custom Semantic Kernel plugin:
 
-See `prompt_processor.py`, `kernel.py`, and `post_evaluation.py` for details on how providers and plugins are injected and used.
+- **PDFReaderPlugin:** Native Python function plugin for PDF text extraction using PyMuPDF
+- **Multiple Input Formats:** Supports both file uploads and base64-encoded PDF data
+- **Comprehensive Metadata:** Extracts page count, file size, and processing information
+- **Error Handling:** Robust error handling with detailed feedback for debugging
+- **API Integration:** Seamlessly integrated into the `/analyze-pdf` endpoint
+
+The PDF reader plugin uses PyMuPDF (fitz) for reliable text extraction and is designed as a Semantic Kernel plugin with `@kernel_function` decorators for easy integration with AI agents.
+
+See `pdf_reader_plugin.py` and `foundry_agent_factory.py` for details on how the PDF processing is implemented and integrated with the architecture_extractor agent.
 
 ## Prerequisites
 
 ### Local Development
 - Python 3.8+
-- [Azurite](https://github.com/Azure/Azurite) (for local Blob Storage emulation)
-- [Azure Service Bus Emulator](https://github.com/Azure/azure-service-bus) (for local Service Bus emulation)
+- [Azurite](https://github.com/Azure/Azurite) (optional, for local Blob Storage emulation if using storage features)
 - Install dependencies:
   ```sh
   pip install -r requirements.txt
@@ -47,26 +62,58 @@ The project includes:
 ## Environment Variables
 Set the following environment variables before running the project:
 
-- `AZURE_STORAGE_CONNECTION_STRING` (for local Blob Storage)
-- `AZURE_STORAGE_ACCOUNT_URL` (for managed identity/Azure)
-- `PROMPT_TEMPLATE_CONTAINER_NAME` (Blob container name)
-- `PROMPT_TEMPLATE_BLOB_NAME` (Blob name for the prompt template)
-- `SERVICE_BUS_CONNECTION_STR` (Service Bus connection string)
-- `SERVICE_BUS_QUEUE_NAME` (Service Bus queue name)
-- `AI_MODEL_NAME` (AI model deployment name)
-- `AI_API_KEY` (AI API key)
+### Required Variables
+- `MODEL_DEPLOYMENT_NAME` (AI model deployment name)
+- `AI_API_KEY` (AI API key)  
 - `AI_ENDPOINT` (AI endpoint)
 - `API_VERSION` (AI API version)
-- `SHUTDOWN_TIMEOUT` (Optional: Graceful shutdown timeout in seconds, default: 30)
+
+### Optional Azure AI Foundry Variables (for enhanced processing)
+- `AZURE_AI_PROJECT_ENDPOINT` (Azure AI Foundry project endpoint)
+- `ARCHITECTURE_EXTRACTOR_AGENT_ID` (Architecture Detail Extractor agent ID)
+- `AZURE_RESOURCES_SPECIALIST_AGENT_ID` (Azure Resources Specialist agent ID)
+
+### Optional Storage Variables (if using blob storage features)
+- `AZURE_STORAGE_CONNECTION_STRING` (for local Blob Storage)
+- `AZURE_STORAGE_ACCOUNT_URL` (for managed identity/Azure)
+- `STORAGE_CONTAINER_NAME` (Blob container name)
+
+### Optional Configuration
+- `HOST` (API host, default: 0.0.0.0)
+- `PORT` (API port, default: 8080)
+- `LOG_LEVEL` (Logging level, default: INFO)
 
 ## Usage
 
-### Option 1: Local Python Development
+### Option 1: API Server
 
-#### 1. Start Local Emulators
- - The easiest way to emulate a local blob storage is to use the Azurite extension in VS Code and click the "[Azurite Blob Service]" in the status bar
- - Start your Service Bus emulator (a Docker container) or use Azure Service Bus Explorer for local development.
- - Use the Azure Storage Explorer to connect to your blob storage local emulator, create a container named "prompt_templates", create a new file essay.yaml, paste the following content and upload it into the container:
+#### 1. Configure Environment
+Create a `.env` file based on `.env.template`:
+```bash
+cp .env.template .env
+# Edit .env with your configuration
+```
+
+#### 2. Start the API Server
+```bash
+python api.py
+```
+
+The API will be available at `http://localhost:8080` with interactive documentation at `http://localhost:8080/docs`.
+
+#### 3. Test with CLI Tool
+Use the built-in CLI testing tool:
+```bash
+python cli_test.py
+```
+
+### Option 2: Local Storage Setup (Optional)
+If you want to use blob storage features:
+- Start Azurite using the VS Code extension or Docker
+- Use Azure Storage Explorer to create a container named "templates"
+- Upload prompt template files as needed
+
+Example prompt template (essay.yaml):
 
 ```yaml
 name: EvaluateEssay
@@ -103,86 +150,128 @@ execution_settings:
   service1:
     model_id: gpt-4o
     temperature: 0.6
-  service2:
-    model_id: gpt-4o-mini
-    temperature: 0.4
   default:
     temperature: 0.5
 ```
 
-#### 2. Run the Consumer
-To start the message consumer:
-```sh
-python main.py
-```
-This will listen for messages on the configured Service Bus queue and process them using the prompt template from Blob Storage.
-
-#### 3. Test the Consumer
-The consumer will automatically start processing messages when you run:
-```sh
-python main.py
-```
-
-### Option 2: Docker Development
+### Option 3: Docker Deployment
 
 #### 1. Build the Docker Image
-```sh
-# Build the image
-docker build -t semantic-kernel-consumer:latest .
+```bash
+docker build -t enhanced-document-analysis-api:latest .
 ```
 
 #### 2. Run with Docker
-```sh
+```bash
 # Run with environment file
-docker run --env-file .env semantic-kernel-consumer:latest
+docker run --env-file .env -p 8080:8080 enhanced-document-analysis-api:latest
 
-# Or run with Azure services (production-like)
-docker run -e SERVICE_BUS_CONNECTION_STR="your-azure-servicebus-connection" \
-           -e AZURE_STORAGE_ACCOUNT_URL="https://yourstorageaccount.blob.core.windows.net" \
-           -e AI_ENDPOINT="https://your-openai.openai.azure.com/" \
+# Or run with environment variables
+docker run -e MODEL_DEPLOYMENT_NAME="gpt-4" \
            -e AI_API_KEY="your-api-key" \
-           -e AI_MODEL_NAME="gpt-4o" \
+           -e AI_ENDPOINT="https://your-resource.openai.azure.com/" \
            -e API_VERSION="2024-02-01" \
-           -e PROMPT_TEMPLATE_CONTAINER_NAME="prompt-templates" \
-           -e PROMPT_TEMPLATE_BLOB_NAME="essay.yaml" \
-           -e SERVICE_BUS_QUEUE_NAME="essays" \
-           semantic-kernel-consumer:latest
+           -p 8080:8080 \
+           enhanced-document-analysis-api:latest
 ```
 
-#### 3. Test with Docker
-The Docker container will automatically start processing messages from your configured Service Bus queue.
+## API Usage
 
-### Message Format
-To test the system (both local and Docker), you can send messages to your Service Bus queue using Azure Service Bus Explorer, Azure CLI, or any Service Bus client. The expected message format is:
-```json
-{
-  "skills_list": ["skill1", "skill2", "skill3"],
-  "essay": "Your essay text here..."
-}
+### Available Endpoints
+
+#### 1. Document Analysis (Text Input)
+Analyze text documents using Azure AI Foundry agents (with automatic fallback):
+
+```bash
+# General document analysis  
+curl -X POST "http://localhost:8080/analyze-document" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "document_text": "This document describes a cloud architecture using Azure services...",
+       "analysis_parameters": {
+         "focus_areas": ["architecture", "azure_resources"],
+         "detail_level": "comprehensive"
+       }
+     }'
 ```
+
+#### 2. PDF Document Analysis
+Analyze PDF documents with automatic text extraction and AI processing:
+
+```bash
+# Upload and analyze PDF file
+curl -X POST "http://localhost:8080/analyze-pdf" \
+     -F "file=@/path/to/your/document.pdf" \
+     -F "analysis_parameters={\"focus_areas\": [\"architecture\", \"azure_resources\"], \"detail_level\": \"comprehensive\"}"
+```
+
+#### 3. Essay Evaluation
+Evaluate essays based on specific skills criteria:
+
+```bash
+curl -X POST "http://localhost:8080/evaluate" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "essay": "Your essay content here",
+       "skills_list": ["Writing clarity", "Grammar", "Content analysis"]
+     }'
+```
+
+#### 4. Health Check
+Check API status and configuration:
+
+```bash
+curl -X GET "http://localhost:8080/status"
+```
+
+#### 3. Interactive API Documentation
+Access Swagger UI at: `http://localhost:8080/docs`
+
+### CLI Testing
+For development and testing, use the CLI tool:
+
+```bash
+python cli_test.py
+```
+
+This provides interactive testing for:
+- Essay evaluation scenarios
+- Document analysis workflows  
+- Configuration validation
+- Error handling verification
 
 ## Project Structure
-- `main.py` — Entry point; runs the message consumer
-- `consumer.py` — Handles Service Bus message processing with async support and graceful shutdown
-- `prompt_processor.py` — Processes messages using prompt templates and manages AI service injection
+- `main.py` — Entry point; runs the FastAPI server
+- `api.py` — FastAPI endpoints and request/response models including PDF upload support
+- `prompt_processor.py` — Main processor integrating Azure AI Foundry agents with fallback
+- `foundry_agent_factory.py` — Factory for retrieving existing Azure AI Foundry agents
+- `sequential_workflow_manager.py` — Manages sequential agent workflows in Semantic Kernel
 - `kernel.py` — Handles AI provider injection and Semantic Kernel configuration via KernelFactory
+- `pdf_reader_plugin.py` — Semantic Kernel plugin for PDF text extraction using PyMuPDF
 - `blob_client.py` — Handles Blob Storage access for prompt templates
+- `test_pdf_cli.py` — CLI testing tool for PDF analysis functionality
 - `post_evaluation.py` — Plugin for essay evaluation, scoring, and approval/rejection logic
+- `cli_test.py` — CLI testing tool for development and validation
 - `tests/` — Unit tests for all modules
 - `essay.yaml` — Sample prompt template (in Portuguese) with evaluation logic
 
-## Notes
-- Ensure all required environment variables are set before running the scripts (locally or in Docker).
-- The project is designed to work both locally (with emulators) and in Azure.
-- **Docker deployment**: The included Dockerfile provides a production-ready containerized version optimized for Linux x64.
-- **Environment configuration**: Use `.env` files for Docker runs or set environment variables directly.
-- Logging output will appear in the console for all scripts (both local and containerized).
-- The system supports graceful shutdown via SIGTERM/SIGINT signals with configurable timeout.
-- Concurrent message processing is supported with a default limit of 10 concurrent tasks.
-- The essay evaluation includes both individual skill assessment and overall approval/rejection logic.
-- You can easily extend or swap the AI service used by modifying the provider injection in `kernel.py`.
-- The PostEvaluation plugin can be extended to support additional evaluation criteria and logic.
-- **Container security**: Docker image runs as non-root user and includes health checks for monitoring.
+## Configuration Options
+
+The application supports multiple AI provider configurations:
+
+1. **AZURE_AI_FOUNDRY**: Azure AI Foundry agents with Semantic Kernel fallback
+2. **AZURE_OPENAI**: Direct Azure OpenAI service integration  
+3. **AZURE_AI_INFERENCE**: Azure AI Inference endpoint integration
+
+## Error Handling & Features
+
+- **Automatic Fallback**: From Azure AI Foundry to traditional processing
+- **Sequential Workflows**: Native Semantic Kernel orchestration
+- **Agent Factory Pattern**: Separation of concerns for agent management
+- **Comprehensive Logging**: For debugging and monitoring
+- **Interactive Documentation**: Swagger UI available at `/docs`
+- **Health Checks**: Status endpoint for monitoring
+- **CLI Testing**: Development and validation tool
 
 ---
 

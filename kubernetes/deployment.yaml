@@ -76,7 +76,7 @@ spec:
             secretKeyRef:
               name: azure-secrets
               key: openai-api-key
-        - name: AI_MODEL_NAME
+        - name: MODEL_DEPLOYMENT_NAME
           valueFrom:
             configMapKeyRef:
               name: azure-config

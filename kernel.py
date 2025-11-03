@@ -18,6 +18,7 @@ logger.addHandler(console_handler)
 class ProviderType(Enum):
     AZURE_OPENAI = "azure_openai"
     AZURE_AI_INFERENCE = "azure_ai_inference"
+    AZURE_AI_FOUNDRY = "azure_ai_foundry"
 
 class KernelFactory:
     @staticmethod
@@ -47,6 +48,17 @@ class KernelFactory:
             )
             kernel.add_service(chat_completion_service)
             logger.info(f"Created kernel with Azure AI Inference provider: {deployment_name}")
+            
+        elif provider_type == ProviderType.AZURE_AI_FOUNDRY:
+            # Create kernel for Azure AI Foundry agents using Azure OpenAI as the underlying service
+            # This kernel will be used by FoundryAgentFactory for plugin support
+            chat_completion = AzureChatCompletion(
+                deployment_name=deployment_name,
+                api_key=api_key,
+                endpoint=endpoint
+            )
+            kernel.add_service(chat_completion)
+            logger.info(f"Created kernel for Azure AI Foundry agents with Azure OpenAI backend: {deployment_name}")
             
         else:
             raise ValueError(f"Unsupported provider type: {provider_type}")
