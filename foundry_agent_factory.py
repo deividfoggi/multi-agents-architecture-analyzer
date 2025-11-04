@@ -39,13 +39,13 @@ class FoundryAgentFactory:
             "architecture_extractor": FoundryAgentConfig(
                 agent_id=os.getenv("ARCHITECTURE_EXTRACTOR_AGENT_ID", "architecture-extractor-id"),
                 name="Architecture-Detail-Extractor",
-                description="Extracts architecture details from documents and identifies architectural patterns",
-                required_plugins=["PDFReaderPlugin"]
+                description="Extrai detalhes de arquitetura de documentos e identifica padrões arquiteturais com base na documentação do Microsoft Learn via protocolo MCP.",
+                required_plugins=["MicrosoftLearnMcpPlugin"]
             ),
             "azure_resources_specialist": FoundryAgentConfig(
                 agent_id=os.getenv("AZURE_RESOURCES_SPECIALIST_AGENT_ID", "azure-resources-specialist-id"),
                 name="Azure-Resources-Specialist",
-                description="Identifies and analyzes Azure resources, services, and configurations",
+                description="Agente Especialista em Recursos do Azure que utiliza exclusivamente a documentação do Microsoft Learn via protocolo MCP para identificar e mapear recursos de infraestrutura aos serviços apropriados do Azure. Totalmente dependente do plugin MCP para todo o conhecimento sobre Azure. Não fornece recomendações sem uma consulta bem-sucedida ao Microsoft Learn.",
                 required_plugins=["MicrosoftLearnMcpPlugin"]
             )
         }
@@ -205,7 +205,8 @@ class FoundryAgentFactory:
             if plugin_name in plugin_registry:
                 try:
                     plugin_instance = plugin_registry[plugin_name]()
-                    kernel.add_plugin(plugin_instance, plugin_name)
+                    
+                    kernel.add_plugin(plugin=plugin_instance)
                     self.logger.info(f"Registered plugin: {plugin_name}")
                 except Exception as e:
                     self.logger.warning(f"Failed to register plugin {plugin_name}: {e}")
