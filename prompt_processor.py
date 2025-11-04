@@ -7,7 +7,7 @@ from foundry_agent_factory import FoundryAgentFactory
 from sequential_workflow_manager import SequentialWorkflowManager
 
 class PromptProcessor:
-    """Enhanced prompt processor integrating Azure AI Foundry agents with fallback to existing processing"""
+    """AI Foundry agents processor for document analysis using Azure AI Foundry agents"""
     
     def __init__(self, deployment_name: str, api_key: str, endpoint: str = None,
                  project_endpoint: str = None):
@@ -20,31 +20,31 @@ class PromptProcessor:
         
         self.logger = logging.getLogger(__name__)
         
-        # Initialize foundry integration if available
+        # Initialize foundry integration
         self.foundry_available = False
         self.agent_factory: Optional[FoundryAgentFactory] = None
         self.workflow_manager: Optional[SequentialWorkflowManager] = None
         
-        if project_endpoint:
-            try:
-                self.logger.info(f"Initializing Azure AI Foundry integration with endpoint: {project_endpoint}")
-                self.logger.info(f"Base model config: {self.base_model_config}")
+        if not project_endpoint:
+            raise ValueError("Project endpoint is required for Azure AI Foundry integration")
+        
+        try:
+            self.logger.info(f"Initializing Azure AI Foundry integration with endpoint: {project_endpoint}")
+            self.logger.info(f"Base model: {self.base_model_config['deployment_name']}")
+            
+            self.agent_factory = FoundryAgentFactory(
+                project_endpoint, 
+                self.base_model_config
+            )
+            
+            self.logger.info("FoundryAgentFactory created. Agent validation will be done on first use...")
+            # Defer validation to async initialization
                 
-                self.agent_factory = FoundryAgentFactory(
-                    project_endpoint, 
-                    self.base_model_config
-                )
-                
-                self.logger.info("FoundryAgentFactory created. Agent validation will be done on first use...")
-                # Defer validation to async initialization
-                    
-            except Exception as e:
-                self.logger.error(f"❌ Failed to initialize Azure AI Foundry integration: {e}")
-                import traceback
-                self.logger.error(f"Full traceback: {traceback.format_exc()}")
-                self.logger.info("Falling back to existing processing")
-        else:
-            self.logger.info("No project endpoint provided, using existing processing")
+        except Exception as e:
+            self.logger.error(f"❌ Failed to initialize Azure AI Foundry integration: {e}")
+            import traceback
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
+            raise Exception(f"Azure AI Foundry initialization failed: {e}")
     
     async def _initialize_foundry_agents(self) -> bool:
         """Initialize foundry agents asynchronously"""
@@ -62,7 +62,7 @@ class PromptProcessor:
                 self.logger.info("✅ Azure AI Foundry agents initialized successfully")
                 return True
             else:
-                self.logger.warning("❌ Azure AI Foundry agents validation failed, using fallback")
+                self.logger.error("❌ Azure AI Foundry agents validation failed")
                 return False
                 
         except Exception as e:
@@ -72,7 +72,7 @@ class PromptProcessor:
             return False
     
     async def process(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Main processing method - FOUNDRY AGENTS ONLY"""
+        """Main processing method using Azure AI Foundry agents"""
         
         # Initialize foundry agents if not already done
         if self.agent_factory and not self.foundry_available:
@@ -89,11 +89,11 @@ class PromptProcessor:
             self.logger.error(error_msg)
             raise Exception(error_msg)
         
-        # Process using foundry agents only
+        # Process using foundry agents
         return await self._process_with_foundry_agents(payload)
     
     async def process_document_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Process document analysis using the sequential workflow - FOUNDRY AGENTS ONLY"""
+        """Process document analysis using the sequential workflow with Azure AI Foundry agents"""
         
         self.logger.info("=== PROCESS_DOCUMENT_ANALYSIS STARTED ===")
         self.logger.info(f"Foundry available: {self.foundry_available}")
@@ -106,7 +106,7 @@ class PromptProcessor:
             await self._initialize_foundry_agents()
         
         if not self.foundry_available:
-            error_msg = "Azure AI Foundry agents are required but not available. Cannot process without foundry agents."
+            error_msg = "Azure AI Foundry agents are required but not available"
             self.logger.error(error_msg)
             raise Exception(error_msg)
         
@@ -179,126 +179,6 @@ class PromptProcessor:
             result = await self.workflow_manager.execute_workflow(workflow_input)
             return self._format_foundry_result(result, payload)
     
-    async def _process_with_fallback(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Fallback to basic processing using Semantic Kernel directly"""
-        
-        try:
-            # Import Semantic Kernel components for fallback processing
-            from semantic_kernel import Kernel
-            from kernel import KernelFactory, ProviderType
-            
-            # Create basic kernel for fallback processing
-            kernel = KernelFactory.create_kernel(
-                provider_type=ProviderType.AZURE_OPENAI,
-                deployment_name=self.base_model_config["deployment_name"],
-                api_key=self.base_model_config["api_key"],
-                endpoint=self.base_model_config["endpoint"]
-            )
-            
-            # Extract content from payload
-            content = self._extract_content_from_payload(payload)
-            
-            # Create analysis prompt based on payload type
-            if payload.get("type") == "document_analysis":
-                analysis_prompt = f"""
-Analyze the following document content and provide a comprehensive analysis covering:
-
-1. **Architecture Analysis:**
-   - Identify architectural patterns, design principles, and system components
-   - Document any microservices, APIs, databases, or infrastructure components mentioned
-   - Note scalability, security, and performance considerations
-
-2. **Azure Resources Analysis:**
-   - List all Azure services and resources mentioned or implied
-   - Identify resource configurations, networking setup, and security measures
-   - Note any Azure-specific features, pricing tiers, or deployment patterns
-
-3. **Technical Recommendations:**
-   - Suggest improvements or best practices
-   - Identify potential issues or areas for optimization
-   - Recommend additional Azure services that could enhance the architecture
-
-Document Content:
-{content}
-
-Please provide a detailed, structured analysis in a clear format.
-"""
-            else:
-                analysis_prompt = f"""
-Analyze the following content and provide insights about:
-1. Key technical concepts and architecture patterns
-2. Azure services and cloud resources mentioned
-3. Recommendations for improvement or optimization
-
-Content:
-{content}
-
-Please provide a structured analysis.
-"""
-            
-            # Use kernel to invoke the function directly
-            response_result = await kernel.invoke_prompt(analysis_prompt)
-            response = str(response_result)
-            
-            # Format result to match expected structure
-            result = {
-                "success": True,
-                "result": {
-                    "analysis": response,
-                    "architecture_insights": "Analysis completed using fallback processing",
-                    "azure_resources": "Azure resources identified in fallback mode",
-                    "metadata": {
-                        "content_length": len(content),
-                        "processing_method": "semantic_kernel_fallback",
-                        "timestamp": datetime.now().isoformat()
-                    }
-                },
-                "processing_type": "fallback_semantic_kernel",
-                "foundry_available": False,
-                "agents_used": [],
-                "timestamp": datetime.now().isoformat()
-            }
-            
-            return result
-            
-        except Exception as e:
-            self.logger.error(f"Fallback processing failed: {e}")
-            
-            # Last resort: return basic content analysis
-            try:
-                content = self._extract_content_from_payload(payload)
-                return {
-                    "success": True,
-                    "result": {
-                        "analysis": f"Content received and processed (fallback mode). Content length: {len(content)} characters.",
-                        "content_preview": content[:500] + "..." if len(content) > 500 else content,
-                        "note": "Processing completed in basic fallback mode due to service limitations."
-                    },
-                    "processing_type": "fallback_basic",
-                    "foundry_available": False,
-                    "agents_used": [],
-                    "error_details": str(e),
-                    "timestamp": datetime.now().isoformat()
-                }
-            except Exception as fallback_error:
-                return {
-                    "success": False,
-                    "error": f"Both Foundry and fallback processing failed: {str(e)}. Fallback error: {str(fallback_error)}",
-                    "processing_type": "failed",
-                    "timestamp": datetime.now().isoformat()
-                }
-    
-    def _determine_processing_type(self, payload: Dict[str, Any]) -> str:
-        """Determine the appropriate processing type - FOUNDRY ONLY"""
-        
-        # Check if payload has sufficient content
-        content = self._extract_content_from_payload(payload)
-        if not content or len(content.strip()) < 10:
-            raise Exception("Insufficient content for processing")
-        
-        # All tasks use foundry workflow
-        return "foundry_workflow"
-    
     def _is_document_analysis_payload(self, payload: Dict[str, Any]) -> bool:
         """Check if payload is for document analysis"""
         
@@ -314,7 +194,7 @@ Please provide a structured analysis.
     def _extract_content_from_payload(self, payload: Dict[str, Any]) -> str:
         """Extract content from various payload formats"""
         
-        content_fields = ["document_text", "content", "text", "essay_text"]
+        content_fields = ["document_text", "content", "text"]
         
         for field in content_fields:
             if field in payload and payload[field]:
