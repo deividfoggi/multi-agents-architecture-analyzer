@@ -2,6 +2,7 @@ from semantic_kernel import Kernel
 from semantic_kernel.agents import AzureAIAgent
 from semantic_kernel.agents.azure_ai.azure_ai_agent_settings import AzureAIAgentSettings
 from azure.identity.aio import DefaultAzureCredential
+from microsoft_learn_mcp_plugin import MicrosoftLearnMcpPlugin
 from pdf_reader_plugin import PDFReaderPlugin
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
@@ -38,14 +39,14 @@ class FoundryAgentFactory:
             "architecture_extractor": FoundryAgentConfig(
                 agent_id=os.getenv("ARCHITECTURE_EXTRACTOR_AGENT_ID", "architecture-extractor-id"),
                 name="Architecture-Detail-Extractor",
-                description="Extracts architecture details from documents and identifies architectural patterns",
-                required_plugins=["PDFReaderPlugin"]
+                description="Extrai detalhes de arquitetura de documentos e identifica padrões arquiteturais com base na documentação do Microsoft Learn via protocolo MCP.",
+                required_plugins=["MicrosoftLearnMcpPlugin"]
             ),
             "azure_resources_specialist": FoundryAgentConfig(
                 agent_id=os.getenv("AZURE_RESOURCES_SPECIALIST_AGENT_ID", "azure-resources-specialist-id"),
                 name="Azure-Resources-Specialist",
-                description="Identifies and analyzes Azure resources, services, and configurations",
-                required_plugins=[]
+                description="Agente Especialista em Recursos do Azure que utiliza exclusivamente a documentação do Microsoft Learn via protocolo MCP para identificar e mapear recursos de infraestrutura aos serviços apropriados do Azure. Totalmente dependente do plugin MCP para todo o conhecimento sobre Azure. Não fornece recomendações sem uma consulta bem-sucedida ao Microsoft Learn.",
+                required_plugins=["MicrosoftLearnMcpPlugin"]
             )
         }
     
@@ -126,10 +127,31 @@ class FoundryAgentFactory:
                 
             self.logger.info(f"Found agent in Azure AI Foundry: {config.agent_id}")
             
-            # Create AzureAIAgent instance using the retrieved agent information and client
+            # Create plugin instances for this agent based on config requirements
+            plugins = []
+            if config.required_plugins:
+                self.logger.info(f"Creating plugins for agent {config.agent_id}: {config.required_plugins}")
+                plugin_registry = {
+                    #"PDFReaderPlugin": PDFReaderPlugin,
+                    "MicrosoftLearnMcpPlugin": MicrosoftLearnMcpPlugin
+                }
+                
+                for plugin_name in config.required_plugins:
+                    if plugin_name in plugin_registry:
+                        try:
+                            plugin_instance = plugin_registry[plugin_name]()
+                            plugins.append(plugin_instance)
+                            self.logger.info(f"Created plugin instance: {plugin_name}")
+                        except Exception as e:
+                            self.logger.error(f"Failed to create plugin {plugin_name}: {e}")
+                    else:
+                        self.logger.warning(f"Unknown plugin requested: {plugin_name}")
+            
+            # Create AzureAIAgent instance using the retrieved agent information, client, and plugins
             azure_ai_agent = AzureAIAgent(
                 client=self.agent_client,
-                definition=raw_agent
+                definition=raw_agent,
+                plugins=plugins  # Add plugins support!
             )
             
             # Configure polling options for shorter timeouts
@@ -137,8 +159,8 @@ class FoundryAgentFactory:
             from datetime import timedelta
             
             polling_options = RunPollingOptions(
-                run_polling_timeout=timedelta(seconds=90),  # Reduce from default 300s to 90s
-                message_synchronization_delay=timedelta(seconds=1)  # Faster message sync
+                run_polling_timeout=timedelta(seconds=300),
+                message_synchronization_delay=timedelta(seconds=2)
             )
             azure_ai_agent.polling_options = polling_options
             
@@ -146,6 +168,19 @@ class FoundryAgentFactory:
             self.logger.info(f"Agent has id: {hasattr(azure_ai_agent, 'id')}")
             if hasattr(azure_ai_agent, 'id'):
                 self.logger.info(f"Agent id value: {azure_ai_agent.id}")
+            
+            # SUCCESS: Azure AI Foundry agents now properly configured with plugins!
+            self.logger.info(f"=== FOUNDRY AGENT WITH PLUGINS SUCCESS ===")
+            self.logger.info(f"Azure AI Foundry agent {config.agent_id} retrieved and configured successfully")
+            self.logger.info(f"Required plugins: {config.required_plugins}")
+            self.logger.info(f"Successfully created {len(plugins)} plugin instances")
+            if plugins:
+                plugin_names = [type(p).__name__ for p in plugins]
+                self.logger.info(f"Active plugins: {plugin_names}")
+                self.logger.info(f"MCP plugin should now be available to the agent!")
+            else:
+                self.logger.info(f"No plugins required for this agent")
+            self.logger.info(f"=== PLUGIN CONFIGURATION COMPLETE ===")
             
             # Cache the agent client
             self._agent_cache[config.agent_id] = azure_ai_agent
@@ -159,28 +194,30 @@ class FoundryAgentFactory:
     
     async def retrieve_architecture_extractor(self) -> AzureAIAgent:
         """Retrieve the Architecture Detail Extractor agent"""
-        config = FoundryAgentConfig(
-            agent_id=os.getenv("ARCHITECTURE_EXTRACTOR_AGENT_ID", "architecture-extractor-id"),
-            name="ArchitectureDetailExtractor",
-            description="Architecture Detail Extractor Agent"
-        )
+        # Use the pre-configured agent config that includes required plugins
+        config = self.foundry_agents["architecture_extractor"]
         return await self.retrieve_foundry_agent(config)
     
     async def retrieve_resources_specialist(self) -> AzureAIAgent:
         """Retrieve the Azure Resources Specialist agent"""
-        config = FoundryAgentConfig(
-            agent_id=os.getenv("AZURE_RESOURCES_SPECIALIST_AGENT_ID", "azure-resources-specialist-id"),
-            name="AzureResourcesSpecialist",
-            description="Azure Resources Specialist Agent"
-        )
+        # Use the pre-configured agent config that includes required plugins
+        config = self.foundry_agents["azure_resources_specialist"]
         return await self.retrieve_foundry_agent(config)
     
     async def get_sequential_agents(self) -> List[AzureAIAgent]:
         """Get agents in the required sequential order: Extractor first, Specialist later"""
-        return [
-            await self.retrieve_architecture_extractor(),
-            await self.retrieve_resources_specialist()
-        ]
+        self.logger.info("=== GET_SEQUENTIAL_AGENTS CALLED ===")
+        self.logger.info("About to retrieve architecture extractor...")
+        
+        arch_agent = await self.retrieve_architecture_extractor()
+        self.logger.info("Architecture extractor retrieved, now retrieving resources specialist...")
+        
+        resources_agent = await self.retrieve_resources_specialist()
+        self.logger.info("Both agents retrieved successfully")
+        
+        agents = [arch_agent, resources_agent]
+        self.logger.info(f"Returning {len(agents)} agents")
+        return agents
     
     def _create_specialized_kernel(self, config: FoundryAgentConfig) -> Kernel:
         """Create kernel with plugins for the agent"""
@@ -197,13 +234,15 @@ class FoundryAgentFactory:
         """Register plugins for the kernel"""
         plugin_registry = {
             "PDFReaderPlugin": lambda: PDFReaderPlugin(),
+            "MicrosoftLearnMcpPlugin": lambda: MicrosoftLearnMcpPlugin()
         }
         
         for plugin_name in required_plugins:
             if plugin_name in plugin_registry:
                 try:
                     plugin_instance = plugin_registry[plugin_name]()
-                    kernel.add_plugin(plugin_instance, plugin_name)
+                    
+                    kernel.add_plugin(plugin=plugin_instance)
                     self.logger.info(f"Registered plugin: {plugin_name}")
                 except Exception as e:
                     self.logger.warning(f"Failed to register plugin {plugin_name}: {e}")
@@ -243,6 +282,21 @@ class FoundryAgentFactory:
             import traceback
             self.logger.error(f"Full traceback: {traceback.format_exc()}")
             return False
+
+    def clear_agent_cache(self):
+        """Clear the agent cache to force fresh agent creation"""
+        self.logger.info("=== CLEARING AGENT CACHE ===")
+        self.logger.info(f"Cache contained {len(self._agent_cache)} agents: {list(self._agent_cache.keys())}")
+        self._agent_cache.clear()
+        self.logger.info("Agent cache cleared - next agent retrieval will trigger full initialization")
+    
+    def get_cache_status(self) -> Dict[str, Any]:
+        """Get current cache status for debugging"""
+        return {
+            "cache_size": len(self._agent_cache),
+            "cached_agent_ids": list(self._agent_cache.keys()),
+            "client_initialized": self._client_initialized
+        }
 
     async def cleanup(self):
         """Clean up resources when factory is no longer needed"""

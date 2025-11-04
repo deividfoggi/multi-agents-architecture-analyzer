@@ -453,7 +453,15 @@ async def analyze_pdf_document(
         
         # Process using EnhancedPromptProcessor
         try:
+            logger.info("=== API: ABOUT TO CALL PROCESSOR.PROCESS_DOCUMENT_ANALYSIS ===")
+            logger.info(f"Processor instance type: {type(processor_instance)}")
+            logger.info(f"Payload keys: {list(payload.keys())}")
+            
             analysis_result = await processor_instance.process_document_analysis(payload)
+            
+            logger.info("=== API: PROCESSOR.PROCESS_DOCUMENT_ANALYSIS COMPLETED ===")
+            logger.info(f"Analysis result type: {type(analysis_result)}")
+            logger.info(f"Analysis result success: {analysis_result.get('success') if isinstance(analysis_result, dict) else 'N/A'}")
         except RuntimeError as e:
             if "event loop" in str(e).lower() or "uvloop" in str(e).lower():
                 logger.warning(f"Event loop conflict detected: {e}")

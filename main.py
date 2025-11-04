@@ -2,14 +2,23 @@ import logging
 import os
 import uvicorn
 
-# Configure logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+# Configure root logger to handle all modules
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+# Remove any existing handlers to avoid duplicates
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+# Add console handler to root logger
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
+root_logger.addHandler(console_handler)
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     # Get configuration from environment

@@ -95,6 +95,11 @@ class PromptProcessor:
     async def process_document_analysis(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Process document analysis using the sequential workflow - FOUNDRY AGENTS ONLY"""
         
+        self.logger.info("=== PROCESS_DOCUMENT_ANALYSIS STARTED ===")
+        self.logger.info(f"Foundry available: {self.foundry_available}")
+        self.logger.info(f"Agent factory exists: {self.agent_factory is not None}")
+        self.logger.info(f"Workflow manager exists: {self.workflow_manager is not None}")
+        
         # Initialize foundry agents if not already done
         if self.agent_factory and not self.foundry_available:
             self.logger.info("Attempting to initialize foundry agents for document analysis...")
@@ -113,8 +118,15 @@ class PromptProcessor:
                 "task_type": "document_analysis"
             }
             
+            self.logger.info("=== ABOUT TO CALL WORKFLOW_MANAGER.EXECUTE_WORKFLOW ===")
+            self.logger.info(f"Workflow input keys: {list(workflow_input.keys())}")
+            self.logger.info(f"Content length: {len(workflow_input['content'])}")
+            
             # Execute sequential workflow
             result = await self.workflow_manager.execute_workflow(workflow_input)
+            
+            self.logger.info("=== WORKFLOW_MANAGER.EXECUTE_WORKFLOW COMPLETED ===")
+            self.logger.info(f"Result keys: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
             
             if result["success"]:
                 self.logger.info("Document analysis completed using Foundry agents")
