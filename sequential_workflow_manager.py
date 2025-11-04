@@ -22,8 +22,18 @@ class SequentialWorkflowManager:
         """Create sequential workflow: Architecture Extractor → Azure Resources Specialist"""
         
         try:
+            self.logger.info("=== WORKFLOW CREATION START ===")
+            self.logger.info("About to call foundry_factory.get_sequential_agents()")
+            
+            # Get cache status before agent retrieval
+            if hasattr(self.foundry_factory, 'get_cache_status'):
+                cache_status = self.foundry_factory.get_cache_status()
+                self.logger.info(f"Factory cache status before agent retrieval: {cache_status}")
+            
             # Get agents in sequential order - use direct agent invocation instead of AgentGroupChat
             agents = await self.foundry_factory.get_sequential_agents()
+            
+            self.logger.info(f"=== AGENTS RETRIEVED SUCCESSFULLY ===")
             
             self.logger.info(f"Retrieved {len(agents)} agents for workflow")
             for i, agent in enumerate(agents):
@@ -44,7 +54,11 @@ class SequentialWorkflowManager:
     async def execute_workflow(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute the sequential workflow with shared thread context"""
         
+        self.logger.info("=== EXECUTE_WORKFLOW CALLED ===")
+        self.logger.info(f"Input data keys: {list(input_data.keys())}")
+        
         if not self.current_workflow:
+            self.logger.info("No current workflow, creating document analysis workflow...")
             self.current_workflow = await self.create_document_analysis_workflow()
         
         try:
