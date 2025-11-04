@@ -10,8 +10,8 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, BackgroundTasks, File, UploadFile, Form
 from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
-from prompt_processor import PromptProcessor
-from pdf_reader_plugin import PDFReaderPlugin
+from analyzer.processors.prompt_processor import PromptProcessor
+from analyzer.plugins.pdf_reader_plugin import PDFReaderPlugin
 
 load_dotenv()
 

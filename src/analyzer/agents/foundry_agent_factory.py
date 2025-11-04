@@ -2,8 +2,8 @@ from semantic_kernel import Kernel
 from semantic_kernel.agents import AzureAIAgent
 from semantic_kernel.agents.azure_ai.azure_ai_agent_settings import AzureAIAgentSettings
 from azure.identity.aio import DefaultAzureCredential
-from microsoft_learn_mcp_plugin import MicrosoftLearnMcpPlugin
-from pdf_reader_plugin import PDFReaderPlugin
+from analyzer.plugins.microsoft_learn_mcp_plugin import MicrosoftLearnMcpPlugin
+from analyzer.plugins.pdf_reader_plugin import PDFReaderPlugin
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 import logging
