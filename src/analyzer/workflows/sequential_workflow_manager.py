@@ -7,14 +7,14 @@ Refactored to follow SOLID principles with delegated responsibilities.
 from semantic_kernel import Kernel
 from semantic_kernel.agents import AzureAIAgent, AzureAIAgentThread
 from semantic_kernel.contents import ChatMessageContent
-from foundry_agent_factory import FoundryAgentFactory
+from analyzer.agents.foundry_agent_factory import FoundryAgentFactory
 from typing import Dict, List, Optional, Any
 import logging
 import json
 import asyncio
 
-from insights_extractor import InsightsExtractor
-from result_formatter import ResultFormatter
+from analyzer.extractors.insights_extractor import InsightsExtractor
+from analyzer.processors.result_formatter import ResultFormatter
 
 
 class SequentialWorkflowManager:

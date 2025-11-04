@@ -6,7 +6,8 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    SHUTDOWN_TIMEOUT=30
+    SHUTDOWN_TIMEOUT=30 \
+    PYTHONPATH=/app/src
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -24,8 +25,10 @@ WORKDIR /app
 
 # Copy requirements file and install dependencies
 COPY requirements.txt .
+COPY pyproject.toml .
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt && \
+    pip install -e .
 
 # Copy application code (excluding cache files)
 COPY --chown=1000:1000 . .

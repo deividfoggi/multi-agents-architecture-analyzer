@@ -31,7 +31,7 @@ if __name__ == "__main__":
     logger.info("Using standard asyncio loop to avoid uvloop conflicts")
     
     uvicorn.run(
-        "api:app",
+        "analyzer.api:app",
         host=host,
         port=port,
         reload=reload,

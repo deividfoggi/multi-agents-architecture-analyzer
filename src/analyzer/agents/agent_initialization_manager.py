@@ -4,7 +4,7 @@ Follows Single Responsibility Principle (SRP).
 """
 from typing import Optional
 import logging
-from foundry_agent_factory import FoundryAgentFactory
+from analyzer.agents.foundry_agent_factory import FoundryAgentFactory
 
 logger = logging.getLogger(__name__)
 

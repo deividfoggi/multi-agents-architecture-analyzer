@@ -7,12 +7,12 @@ import json
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
-from foundry_agent_factory import FoundryAgentFactory
-from sequential_workflow_manager import SequentialWorkflowManager
+from analyzer.agents.foundry_agent_factory import FoundryAgentFactory
+from analyzer.workflows.sequential_workflow_manager import SequentialWorkflowManager
 
-from agent_initialization_manager import AgentInitializationManager
-from payload_processor import PayloadProcessor
-from result_formatter import ResultFormatter
+from analyzer.agents.agent_initialization_manager import AgentInitializationManager
+from analyzer.workflows.payload_processor import PayloadProcessor
+from analyzer.processors.result_formatter import ResultFormatter
 
 
 class PromptProcessor:

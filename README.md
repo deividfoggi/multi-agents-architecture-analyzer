@@ -1,189 +1,187 @@
-# Enhanced Document Analysis API with Azure AI Foundry Integration
+# Multi-Agent Architecture Analyzer
 
-This project demonstrates an advanced Python-based **RESTful API** that integrates **Azure AI Foundry Agents** using Semantic Kernel for intelligent document analysis and essay evaluation. The application features a hybrid architecture that automatically falls back to traditional processing when Azure AI Foundry agents are unavailable.
+A production-ready Python application that integrates **Azure AI Foundry Agents** using Semantic Kernel for intelligent document analysis and architecture evaluation. Built with modern Python best practices, featuring a modular package structure, comprehensive error handling, and flexible deployment options.
 
 ## 🚀 Key Features
 
 ### Core Functionality
 - **RESTful API:** FastAPI-based API with automatic documentation, validation, and OpenAPI specification
-- **Azure Blob Storage:** Retrieves prompt templates securely from cloud or local storage (optional)
+- **Modular Architecture:** Well-organized package structure following Python best practices
+- **Azure AI Foundry Integration:** Native Semantic Kernel orchestration with specialized agents
+- **PDF Processing:** Advanced PDF text extraction and analysis capabilities
+- **Robust Error Handling:** Comprehensive error handling with graceful fallback mechanisms
 - **Environment-based Configuration:** Secure configuration management through environment variables
-- **Robust Error Handling:** Comprehensive error handling and graceful fallback mechanisms
 
-### 🤖 Azure AI Foundry Integration (New!)
-- **Sequential Agent Workflows:** Native Semantic Kernel orchestration of Azure AI Foundry agents
+### 🤖 Multi-Agent System
+- **Sequential Agent Workflows:** Coordinated multi-agent processing with shared context
 - **Specialized Agents:**
   - **Architecture Detail Extractor:** Identifies architectural patterns, components, and design decisions
   - **Azure Resources Specialist:** Analyzes Azure services, configurations, and provides recommendations
-- **Shared Thread Context:** Maintains conversation continuity across agent interactions
-- **Automatic Fallback:** Seamlessly falls back to traditional processing when agents are unavailable
+- **Conversation Continuity:** Maintains context across agent interactions
+- **Automatic Fallback:** Seamlessly handles agent unavailability
 
-### 🔧 Flexible AI Service Architecture
-The application uses a sophisticated factory pattern to inject AI services into Semantic Kernel:
-
-- **Multiple Provider Support:** Azure OpenAI, Azure AI Inference, and Azure AI Foundry
-- **Agent Factory Pattern:** Creates and manages specialized agents with independent kernels
-- **Plugin System:** Each agent can have specialized plugins for different use cases
-- **Conversation Continuity:** Supports continuing analysis conversations in the same thread context
-- Use different AI services for different use cases
+### 🏗️ Modern Architecture
+- **SOLID Principles:** Clean separation of concerns with delegated responsibilities
+- **Factory Pattern:** Dynamic agent creation and management
+- **Plugin System:** Extensible architecture with custom Semantic Kernel plugins
+- **Package Structure:** Installable Python package with proper namespace organization
+- **Type Safety:** Type hints throughout the codebase
 
 ### 📄 PDF Processing Capabilities
-The architecture_extractor agent now includes native PDF processing through a custom Semantic Kernel plugin:
-
-- **PDFReaderPlugin:** Native Python function plugin for PDF text extraction using PyMuPDF
-- **Multiple Input Formats:** Supports both file uploads and base64-encoded PDF data
+- **Native PDF Plugin:** Custom Semantic Kernel plugin for PDF text extraction using PyMuPDF
+- **Multiple Input Formats:** Supports file uploads and base64-encoded PDF data
 - **Comprehensive Metadata:** Extracts page count, file size, and processing information
-- **Error Handling:** Robust error handling with detailed feedback for debugging
-- **API Integration:** Seamlessly integrated into the `/analyze-pdf` endpoint
+- **Seamless Integration:** Integrated with AI agents for intelligent document analysis
 
-The PDF reader plugin uses PyMuPDF (fitz) for reliable text extraction and is designed as a Semantic Kernel plugin with `@kernel_function` decorators for easy integration with AI agents.
+## 📁 Project Structure
 
-See `pdf_reader_plugin.py` and `foundry_agent_factory.py` for details on how the PDF processing is implemented and integrated with the architecture_extractor agent.
+```
+demo/
+├── src/                                    # Source code package
+│   └── analyzer/                          # Main application package
+│       ├── api.py                         # FastAPI application & endpoints
+│       ├── agents/                        # Agent management
+│       │   ├── agent_initialization_manager.py
+│       │   └── foundry_agent_factory.py
+│       ├── workflows/                     # Workflow execution
+│       │   ├── sequential_workflow_manager.py
+│       │   └── payload_processor.py
+│       ├── processors/                    # Data processing
+│       │   ├── prompt_processor.py
+│       │   └── result_formatter.py
+│       ├── extractors/                    # Data extraction
+│       │   └── insights_extractor.py
+│       └── plugins/                       # Plugin system
+│           ├── microsoft_learn_mcp_plugin.py
+│           └── pdf_reader_plugin.py
+├── kubernetes/                            # Kubernetes deployment configs
+├── main.py                               # Application entry point
+├── requirements.txt                      # Python dependencies
+├── pyproject.toml                        # Package configuration
+├── Dockerfile                            # Container definition
+├── setup.sh                              # Automated setup script
+└── README.md                             # This file
+```
 
-## Prerequisites
+For detailed project structure information, see [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md).
 
-### Local Development
-- Python 3.8+
-- [Azurite](https://github.com/Azure/Azurite) (optional, for local Blob Storage emulation if using storage features)
-- Install dependencies:
-  ```sh
-  pip install -r requirements.txt
-  ```
+## 🚀 Quick Start
 
-### Docker Development
-- Docker (for containerized deployment)
-- Docker Compose (optional, for multi-service orchestration)
+### Prerequisites
+- Python 3.8 or higher
+- pip (Python package manager)
+- Docker (optional, for containerized deployment)
 
-The project includes:
-- `Dockerfile` - Single-stage build optimized for Linux x64
-- `.dockerignore` - Excludes unnecessary files from the Docker build context
-- Environment-based configuration for both local and containerized deployments
+### Option 1: Automated Setup (Recommended)
 
-## Environment Variables
-Set the following environment variables before running the project:
-
-### Required Variables
-- `MODEL_DEPLOYMENT_NAME` (AI model deployment name)
-- `AI_API_KEY` (AI API key)  
-- `AI_ENDPOINT` (AI endpoint)
-- `API_VERSION` (AI API version)
-
-### Optional Azure AI Foundry Variables (for enhanced processing)
-- `AZURE_AI_PROJECT_ENDPOINT` (Azure AI Foundry project endpoint)
-- `ARCHITECTURE_EXTRACTOR_AGENT_ID` (Architecture Detail Extractor agent ID)
-- `AZURE_RESOURCES_SPECIALIST_AGENT_ID` (Azure Resources Specialist agent ID)
-
-### Optional Storage Variables (if using blob storage features)
-- `AZURE_STORAGE_CONNECTION_STRING` (for local Blob Storage)
-- `AZURE_STORAGE_ACCOUNT_URL` (for managed identity/Azure)
-- `STORAGE_CONTAINER_NAME` (Blob container name)
-
-### Optional Configuration
-- `HOST` (API host, default: 0.0.0.0)
-- `PORT` (API port, default: 8080)
-- `LOG_LEVEL` (Logging level, default: INFO)
-
-## Usage
-
-### Option 1: API Server
-
-#### 1. Configure Environment
-Create a `.env` file based on `.env.template`:
 ```bash
+# Run the setup script
+./setup.sh
+
+# Activate the virtual environment
+source .venv/bin/activate
+
+# Configure your environment
 cp .env.template .env
 # Edit .env with your configuration
+
+# Run the application
+python main.py
 ```
 
-#### 2. Start the API Server
+### Option 2: Manual Setup
+
 ```bash
-python api.py
-```
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On macOS/Linux
+# or .venv\Scripts\activate on Windows
 
-The API will be available at `http://localhost:8080` with interactive documentation at `http://localhost:8080/docs`.
+# Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
 
-#### 3. Test with CLI Tool
-Use the built-in CLI testing tool:
-```bash
-python cli_test.py
-```
+# Install package in editable mode
+pip install -e .
 
-### Option 2: Local Storage Setup (Optional)
-If you want to use blob storage features:
-- Start Azurite using the VS Code extension or Docker
-- Use Azure Storage Explorer to create a container named "templates"
-- Upload prompt template files as needed
+# Configure environment
+cp .env.template .env
+# Edit .env with your configuration
 
-Example prompt template (essay.yaml):
-
-```yaml
-name: EvaluateEssay
-template: |
-  <message role="system">
-    Você é um avaliador de redações especialista. Sua tarefa é avaliar a qualidade de uma redação com base nos critérios fornecidos.
-  </message>
-  <message role="user">
-    Avalie a seguinte redação com base em cada uma das habilidades fornecidas:
-      {{ skills_list }}
-    Para cada habilidade, forneça um resultado no formato:
-    {
-      "habilidade": "<nome_da_habilidade>",
-      "comentários": "<resultado_da_avaliação>",
-      "nota": "<nota>"
-    }
-    Esta é a redação a ser avaliada:
-      {{ essay }}
-
-    SEMPRE SOMENTE AO FINAL da avaliação, você deve usar os resultados de cada habilidade avaliada na função evaluate_skills, e então adicione o resultado da avaliação ao resultado final exatamente como ele é retornado.
-  </message>
-template_format: handlebars
-description: An essay evaluation prompt.
-input_variables:
-  - name: skills_list
-    description: The list of skills.
-    is_required: true
-  - name: essay
-    description: The essay to evaluate.
-    is_required: true
-output_variable:
-  evaluation: The evaluation result.
-execution_settings:
-  service1:
-    model_id: gpt-4o
-    temperature: 0.6
-  default:
-    temperature: 0.5
+# Run the application
+python main.py
 ```
 
 ### Option 3: Docker Deployment
 
-#### 1. Build the Docker Image
 ```bash
-docker build -t enhanced-document-analysis-api:latest .
-```
+# Build the Docker image
+docker build -t analyzer:latest .
 
-#### 2. Run with Docker
-```bash
 # Run with environment file
-docker run --env-file .env -p 8080:8080 enhanced-document-analysis-api:latest
+docker run --env-file .env -p 8080:8080 analyzer:latest
 
-# Or run with environment variables
+# Or run with explicit environment variables
 docker run -e MODEL_DEPLOYMENT_NAME="gpt-4" \
            -e AI_API_KEY="your-api-key" \
            -e AI_ENDPOINT="https://your-resource.openai.azure.com/" \
            -e API_VERSION="2024-02-01" \
            -p 8080:8080 \
-           enhanced-document-analysis-api:latest
+           analyzer:latest
 ```
 
-## API Usage
+## ⚙️ Configuration
+
+### Environment Variables
+
+Create a `.env` file based on `.env.template`:
+
+```bash
+cp .env.template .env
+```
+
+#### Required Variables
+- `MODEL_DEPLOYMENT_NAME` - AI model deployment name
+- `AI_API_KEY` - Azure AI API key
+- `AI_ENDPOINT` - Azure AI endpoint URL
+- `API_VERSION` - Azure AI API version
+
+#### Azure AI Foundry (Optional - for enhanced agent processing)
+- `AZURE_AI_PROJECT_ENDPOINT` - Azure AI Foundry project endpoint
+- `ARCHITECTURE_EXTRACTOR_AGENT_ID` - Architecture analysis agent ID
+- `AZURE_RESOURCES_SPECIALIST_AGENT_ID` - Azure resources specialist agent ID
+
+#### Application Configuration (Optional)
+- `HOST` - API host address (default: 0.0.0.0)
+- `PORT` - API port (default: 8080)
+- `LOG_LEVEL` - Logging level (default: INFO)
+- `RELOAD` - Enable auto-reload for development (default: false)
+
+### AI Provider Configuration
+
+The application supports multiple AI provider configurations:
+
+1. **Azure AI Foundry**: Multi-agent workflows with Semantic Kernel
+2. **Azure OpenAI**: Direct Azure OpenAI service integration
+3. **Azure AI Inference**: Azure AI Inference endpoint integration
+
+The system automatically detects available providers and falls back gracefully when agents are unavailable.
+
+## 📚 API Reference
 
 ### Available Endpoints
 
-#### 1. Document Analysis (Text Input)
-Analyze text documents using Azure AI Foundry agents (with automatic fallback):
+#### 1. Health Check
+Check API status and configuration:
 
 ```bash
-# General document analysis  
+curl http://localhost:8080/health
+```
+
+#### 2. Document Analysis (Text Input)
+Analyze text documents using AI agents:
+
+```bash
 curl -X POST "http://localhost:8080/analyze-document" \
      -H "Content-Type: application/json" \
      -d '{
@@ -195,84 +193,203 @@ curl -X POST "http://localhost:8080/analyze-document" \
      }'
 ```
 
-#### 2. PDF Document Analysis
-Analyze PDF documents with automatic text extraction and AI processing:
+#### 3. PDF Document Analysis
+Upload and analyze PDF documents:
 
 ```bash
-# Upload and analyze PDF file
 curl -X POST "http://localhost:8080/analyze-pdf" \
-     -F "file=@/path/to/your/document.pdf" \
-     -F "analysis_parameters={\"focus_areas\": [\"architecture\", \"azure_resources\"], \"detail_level\": \"comprehensive\"}"
+     -F "file=@/path/to/document.pdf" \
+     -F "analysis_parameters={\"focus_areas\": [\"architecture\"], \"detail_level\": \"comprehensive\"}"
 ```
 
-#### 3. Essay Evaluation
-Evaluate essays based on specific skills criteria:
+#### 4. Interactive API Documentation
+Access comprehensive API documentation at:
+- **Swagger UI**: `http://localhost:8080/docs`
+- **ReDoc**: `http://localhost:8080/redoc`
+
+## 🏗️ Architecture
+
+### Package Organization
+
+The application follows a modular architecture with clear separation of concerns:
+
+- **`analyzer/`** - Main application package
+  - **`api.py`** - FastAPI application with all REST endpoints
+  - **`agents/`** - Agent initialization and factory pattern implementation
+  - **`workflows/`** - Sequential workflow management and orchestration
+  - **`processors/`** - Data processing, prompt handling, and result formatting
+  - **`extractors/`** - Insight extraction and data analysis utilities
+  - **`plugins/`** - Custom Semantic Kernel plugins for extended functionality
+
+### Design Patterns
+
+- **Factory Pattern**: Dynamic agent creation and configuration
+- **Facade Pattern**: Simplified interface for complex subsystems
+- **Strategy Pattern**: Pluggable AI provider implementations
+- **Plugin Architecture**: Extensible functionality through Semantic Kernel plugins
+
+### Key Components
+
+#### Agent Management
+- **FoundryAgentFactory**: Creates and configures Azure AI Foundry agents
+- **AgentInitializationManager**: Handles agent lifecycle and initialization
+- Supports multiple specialized agents with independent kernels
+
+#### Workflow Processing
+- **SequentialWorkflowManager**: Orchestrates multi-agent workflows
+- **PayloadProcessor**: Prepares and validates workflow inputs
+- Maintains conversation context across agent interactions
+
+#### Data Processing
+- **PromptProcessor**: Main facade for AI processing
+- **ResultFormatter**: Formats and structures agent responses
+- **InsightsExtractor**: Extracts structured data from analysis results
+
+#### Plugin System
+- **PDFReaderPlugin**: PDF text extraction using PyMuPDF
+- **MicrosoftLearnMcpPlugin**: Integration with Microsoft documentation
+- Extensible architecture for custom plugins
+
+## 🧪 Testing
+
+### Manual Testing
 
 ```bash
-curl -X POST "http://localhost:8080/evaluate" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "essay": "Your essay content here",
-       "skills_list": ["Writing clarity", "Grammar", "Content analysis"]
-     }'
+# Test health endpoint
+curl http://localhost:8080/health
+
+# Test PDF analysis
+curl -X POST "http://localhost:8080/analyze-pdf" \
+     -F "file=@test_document.pdf"
+
+# View API documentation
+open http://localhost:8080/docs
 ```
 
-#### 4. Health Check
-Check API status and configuration:
+### Running Tests (if available)
 
 ```bash
-curl -X GET "http://localhost:8080/status"
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run tests
+pytest
+
+# Run with coverage
+pytest --cov=src/analyzer --cov-report=html
 ```
 
-#### 3. Interactive API Documentation
-Access Swagger UI at: `http://localhost:8080/docs`
+## 🚢 Deployment
 
-### CLI Testing
-For development and testing, use the CLI tool:
+### Docker
+
+The application is containerized and ready for production deployment:
 
 ```bash
-python cli_test.py
+# Build optimized image
+docker build -t analyzer:latest .
+
+# Run in production mode
+docker run -d \
+  --name analyzer \
+  --env-file .env \
+  -p 8080:8080 \
+  --restart unless-stopped \
+  analyzer:latest
 ```
 
-This provides interactive testing for:
-- Essay evaluation scenarios
-- Document analysis workflows  
-- Configuration validation
-- Error handling verification
+### Kubernetes
 
-## Project Structure
-- `main.py` — Entry point; runs the FastAPI server
-- `api.py` — FastAPI endpoints and request/response models including PDF upload support
-- `prompt_processor.py` — Main processor integrating Azure AI Foundry agents with fallback
-- `foundry_agent_factory.py` — Factory for retrieving existing Azure AI Foundry agents
-- `sequential_workflow_manager.py` — Manages sequential agent workflows in Semantic Kernel
-- `kernel.py` — Handles AI provider injection and Semantic Kernel configuration via KernelFactory
-- `pdf_reader_plugin.py` — Semantic Kernel plugin for PDF text extraction using PyMuPDF
-- `blob_client.py` — Handles Blob Storage access for prompt templates
-- `test_pdf_cli.py` — CLI testing tool for PDF analysis functionality
-- `post_evaluation.py` — Plugin for essay evaluation, scoring, and approval/rejection logic
-- `cli_test.py` — CLI testing tool for development and validation
-- `tests/` — Unit tests for all modules
-- `essay.yaml` — Sample prompt template (in Portuguese) with evaluation logic
+Kubernetes deployment configurations are available in the `kubernetes/` directory:
 
-## Configuration Options
+```bash
+# Deploy to Kubernetes
+kubectl apply -f kubernetes/deployment.yaml
 
-The application supports multiple AI provider configurations:
+# Check deployment status
+kubectl get pods -l app=analyzer
 
-1. **AZURE_AI_FOUNDRY**: Azure AI Foundry agents with Semantic Kernel fallback
-2. **AZURE_OPENAI**: Direct Azure OpenAI service integration  
-3. **AZURE_AI_INFERENCE**: Azure AI Inference endpoint integration
+# View logs
+kubectl logs -f deployment/analyzer
+```
 
-## Error Handling & Features
+For detailed Kubernetes setup, see [kubernetes/README.md](kubernetes/README.md).
 
-- **Automatic Fallback**: From Azure AI Foundry to traditional processing
-- **Sequential Workflows**: Native Semantic Kernel orchestration
-- **Agent Factory Pattern**: Separation of concerns for agent management
-- **Comprehensive Logging**: For debugging and monitoring
-- **Interactive Documentation**: Swagger UI available at `/docs`
-- **Health Checks**: Status endpoint for monitoring
-- **CLI Testing**: Development and validation tool
+## 📖 Documentation
+
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide with all setup options
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Detailed development guidelines
+- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - Project reorganization details
+- **API Docs** - Interactive documentation at `/docs` when running
+
+## 🤝 Contributing
+
+This project follows Python best practices:
+
+1. **Code Style**: Follow PEP 8 guidelines
+2. **Type Hints**: Use type annotations throughout
+3. **Documentation**: Add docstrings to all public functions/classes
+4. **Testing**: Write tests for new features
+5. **Git**: Use meaningful commit messages
+
+### Development Workflow
+
+```bash
+# Create feature branch
+git checkout -b feature/your-feature
+
+# Make changes and test
+source .venv/bin/activate
+pytest
+
+# Format code (if using black)
+black src/
+
+# Commit and push
+git add .
+git commit -m "feat: add your feature"
+git push origin feature/your-feature
+```
+
+## 📝 License
+
+[Add your license information here]
+
+## 🆘 Troubleshooting
+
+### Import Errors
+If you encounter import errors:
+```bash
+# Ensure package is installed
+pip install -e .
+
+# Set PYTHONPATH
+export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
+
+# Reload VS Code Python extension
+```
+
+### Agent Connection Issues
+If agents fail to connect:
+- Verify Azure AI Foundry credentials in `.env`
+- Check agent IDs are correct
+- Ensure network connectivity to Azure endpoints
+- Review logs for detailed error messages
+
+### Docker Issues
+```bash
+# Clean rebuild
+docker build --no-cache -t analyzer:latest .
+
+# Check logs
+docker logs analyzer
+
+# Access container shell
+docker exec -it analyzer bash
+```
+
+For more help, see [QUICKSTART.md](QUICKSTART.md) or check the logs.
 
 ---
 
-For more details, see the source code and comments in each file.
+**Built with ❤️ using Azure AI Foundry, Semantic Kernel, and FastAPI**
