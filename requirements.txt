@@ -1,5 +1,6 @@
 semantic-kernel>=1.34.0
 semantic-kernel[azure]
+semantic-kernel[mcp]
 azure-ai-inference
 azure-ai-projects>=1.0.0
 azure-storage-blob>=12.0.0

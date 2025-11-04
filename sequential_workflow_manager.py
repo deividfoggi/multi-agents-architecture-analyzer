@@ -76,7 +76,7 @@ class SequentialWorkflowManager:
                         message_content = input_text
                     else:
                         # Subsequent agents get continuation instructions
-                        message_content = "Please continue the analysis based on the previous agent's work and provide additional insights."
+                        message_content = "Please continue your work based on previous agent output."
                     
                     # Use get_response method with AzureAIAgentThread
                     try:

@@ -2,6 +2,7 @@ from semantic_kernel import Kernel
 from semantic_kernel.agents import AzureAIAgent
 from semantic_kernel.agents.azure_ai.azure_ai_agent_settings import AzureAIAgentSettings
 from azure.identity.aio import DefaultAzureCredential
+from microsoft_learn_mcp_plugin import MicrosoftLearnMcpPlugin
 from pdf_reader_plugin import PDFReaderPlugin
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
@@ -45,7 +46,7 @@ class FoundryAgentFactory:
                 agent_id=os.getenv("AZURE_RESOURCES_SPECIALIST_AGENT_ID", "azure-resources-specialist-id"),
                 name="Azure-Resources-Specialist",
                 description="Identifies and analyzes Azure resources, services, and configurations",
-                required_plugins=[]
+                required_plugins=["MicrosoftLearnMcpPlugin"]
             )
         }
     
@@ -197,6 +198,7 @@ class FoundryAgentFactory:
         """Register plugins for the kernel"""
         plugin_registry = {
             "PDFReaderPlugin": lambda: PDFReaderPlugin(),
+            "MicrosoftLearnMcpPlugin": lambda: MicrosoftLearnMcpPlugin()
         }
         
         for plugin_name in required_plugins:
