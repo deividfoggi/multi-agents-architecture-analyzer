@@ -22,7 +22,7 @@ class LocalTemplateClient:
     def __init__(self, template_file_path: str = None):
         # Get template file path from argument or environment
         if template_file_path is None:
-            template_file_path = os.getenv("LOCAL_TEMPLATE_FILE_PATH", "essay.yaml")
+            template_file_path = os.getenv("LOCAL_TEMPLATE_FILE_PATH", "document_analysis.yaml")
         
         # Convert to absolute path if it's relative
         if not os.path.isabs(template_file_path):

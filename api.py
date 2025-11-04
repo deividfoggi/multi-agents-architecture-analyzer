@@ -36,11 +36,7 @@ def validate_environment_variables():
         'MODEL_DEPLOYMENT_NAME': os.getenv('MODEL_DEPLOYMENT_NAME'),
         'AI_API_KEY': os.getenv('AI_API_KEY'),
         'AI_ENDPOINT': os.getenv('AI_ENDPOINT'),
-        'API_VERSION': os.getenv('API_VERSION')
-    }
-    
-    # Optional Azure AI Foundry variables (for enhanced processing)
-    optional_foundry_vars = {
+        'API_VERSION': os.getenv('API_VERSION'),
         'AZURE_AI_PROJECT_ENDPOINT': os.getenv('AZURE_AI_PROJECT_ENDPOINT'),
         'ARCHITECTURE_EXTRACTOR_AGENT_ID': os.getenv('ARCHITECTURE_EXTRACTOR_AGENT_ID'),
         'AZURE_RESOURCES_SPECIALIST_AGENT_ID': os.getenv('AZURE_RESOURCES_SPECIALIST_AGENT_ID')
@@ -55,47 +51,11 @@ def validate_environment_variables():
         raise ValueError(error_msg)
     
     logger.info("All required environment variables are present")
+    logger.info("Azure AI Foundry integration enabled")
     
-    # Check if Azure AI Foundry variables are available
-    foundry_available = all(optional_foundry_vars.values())
-    if foundry_available:
-        logger.info("Azure AI Foundry variables detected - enhanced processing will be available")
-    else:
-        logger.info("Azure AI Foundry variables not found - using fallback processing only")
-    
-    # Combine all variables
-    all_vars = {**required_vars, **optional_foundry_vars}
-    all_vars['FOUNDRY_AVAILABLE'] = foundry_available
-    
-    return all_vars
+    return required_vars
 
 # Pydantic Models
-class EvaluationRequest(BaseModel):
-    """Request model for essay evaluation."""
-    essay: str = Field(..., description="The essay text to evaluate", min_length=1)
-    skills_list: List[str] = Field(..., description="List of skills to evaluate against", min_items=1)
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "essay": "This is a sample essay about environmental conservation...",
-                "skills_list": [
-                    "Writing clarity and organization",
-                    "Grammar and language usage", 
-                    "Content depth and analysis"
-                ]
-            }
-        }
-
-class EvaluationResponse(BaseModel):
-    """Response model for essay evaluation."""
-    evaluation_result: str = Field(..., description="The detailed evaluation result from AI")
-    status: str = Field(..., description="Processing status (success/error)")
-    processing_time: float = Field(..., description="Time taken to process in seconds")
-    timestamp: str = Field(..., description="ISO timestamp of evaluation")
-    processing_type: str = Field(default="fallback", description="Type of processing used (foundry/fallback)")
-    foundry_available: bool = Field(default=False, description="Whether Azure AI Foundry agents were available")
-
 class DocumentAnalysisRequest(BaseModel):
     """Request model for document analysis."""
     document_text: str = Field(..., description="The document text to analyze", min_length=1)
@@ -118,8 +78,7 @@ class DocumentAnalysisResponse(BaseModel):
     status: str = Field(..., description="Processing status (success/error)")
     processing_time: float = Field(..., description="Time taken to process in seconds")
     timestamp: str = Field(..., description="ISO timestamp of analysis")
-    processing_type: str = Field(..., description="Type of processing used (foundry/fallback)")
-    foundry_available: bool = Field(..., description="Whether Azure AI Foundry agents were available")
+    processing_type: str = Field(..., description="Type of processing used")
     agents_used: List[str] = Field(default=[], description="List of agents used in processing")
     shared_thread_id: Optional[str] = Field(default=None, description="Thread ID for conversation continuity")
     
@@ -145,16 +104,15 @@ async def lifespan(app: FastAPI):
     try:
         env_vars = validate_environment_variables()
         
-        # Initialize enhanced processor with validated environment variables
+        # Initialize processor with validated environment variables
         processor_instance = PromptProcessor(
             deployment_name=env_vars['MODEL_DEPLOYMENT_NAME'],
             api_key=env_vars['AI_API_KEY'],
             endpoint=env_vars['AI_ENDPOINT'],
-            project_endpoint=env_vars.get('AZURE_AI_PROJECT_ENDPOINT')
+            project_endpoint=env_vars['AZURE_AI_PROJECT_ENDPOINT']
         )
         
-        foundry_status = "with Azure AI Foundry integration" if env_vars.get('FOUNDRY_AVAILABLE') else "with fallback processing only"
-        logger.info(f"Initialized EnhancedPromptProcessor {foundry_status} using model: {env_vars['MODEL_DEPLOYMENT_NAME']}")
+        logger.info(f"Initialized PromptProcessor with Azure AI Foundry integration using model: {env_vars['MODEL_DEPLOYMENT_NAME']}")
         
     except Exception as e:
         logger.critical(f"Failed to initialize application: {e}")
@@ -163,18 +121,18 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("Shutting down Essay Evaluation API")
+    logger.info("Shutting down Document Analysis API")
     if processor_instance:
         try:
-            # Enhanced processor doesn't require explicit cleanup like the old one
-            logger.info("EnhancedPromptProcessor shutdown completed")
+            # Processor doesn't require explicit cleanup
+            logger.info("PromptProcessor shutdown completed")
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
 
 # Create FastAPI app with lifecycle management
 app = FastAPI(
-    title="Enhanced Document Analysis API",
-    description="AI-powered document analysis and essay evaluation service using Semantic Kernel and Azure AI Foundry agents",
+    title="Multi-Agent Document Analysis API",
+    description="AI-powered document analysis service using Semantic Kernel and Azure AI Foundry agents",
     version="2.0.0",
     lifespan=lifespan
 )
@@ -188,93 +146,10 @@ async def health_check():
         version="1.0.0"
     )
 
-@app.post("/evaluate", response_model=EvaluationResponse)
-async def evaluate_essay(request: EvaluationRequest):
-    """
-    Evaluate an essay based on provided skills criteria.
-    
-    This endpoint processes the essay through the AI evaluation pipeline
-    and returns detailed results with scoring and feedback.
-    """
-    start_time = time.time()
-    
-    try:
-        if not processor_instance:
-            raise HTTPException(
-                status_code=500, 
-                detail="Processor not initialized. Check server logs for startup errors."
-            )
-        
-        logger.info(f"Processing evaluation request for essay of {len(request.essay)} characters with {len(request.skills_list)} skills")
-        
-        # Prepare payload for enhanced processor
-        payload = {
-            "essay_text": request.essay,
-            "skills_list": request.skills_list,
-            "type": "essay_evaluation"
-        }
-        
-        # Process using EnhancedPromptProcessor
-        try:
-            evaluation_result = await processor_instance.process(payload)
-        except RuntimeError as e:
-            if "event loop" in str(e).lower() or "uvloop" in str(e).lower() or "patch" in str(e).lower():
-                # Event loop conflict detected, log and re-raise with better message
-                logger.warning(f"Event loop conflict detected: {e}")
-                raise HTTPException(
-                    status_code=500,
-                    detail={
-                        "error": "Event loop conflict",
-                        "detail": "Please restart the server with: uvicorn api:app --host 0.0.0.0 --port 8080 --loop asyncio",
-                        "processing_time": round(time.time() - start_time, 3),
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                )
-            else:
-                raise
-        
-        processing_time = time.time() - start_time
-        
-        # Extract result information
-        if isinstance(evaluation_result, dict):
-            result_text = evaluation_result.get("result", str(evaluation_result))
-            processing_type = evaluation_result.get("processing_type", "unknown")
-            foundry_available = evaluation_result.get("foundry_available", False)
-        else:
-            result_text = str(evaluation_result)
-            processing_type = "legacy"
-            foundry_available = False
-        
-        logger.info(f"Evaluation completed successfully in {processing_time:.2f} seconds using {processing_type}")
-        
-        return EvaluationResponse(
-            evaluation_result=result_text,
-            status="success",
-            processing_time=round(processing_time, 3),
-            timestamp=datetime.utcnow().isoformat(),
-            processing_type=processing_type,
-            foundry_available=foundry_available
-        )
-        
-    except Exception as e:
-        processing_time = time.time() - start_time
-        error_msg = f"Evaluation failed: {str(e)}"
-        logger.error(f"{error_msg} (processing time: {processing_time:.2f}s)")
-        
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "Processing failed",
-                "detail": str(e),
-                "processing_time": round(processing_time, 3),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        )
-
 @app.post("/analyze-document", response_model=DocumentAnalysisResponse)
 async def analyze_document(request: DocumentAnalysisRequest):
     """
-    Analyze a document using Azure AI Foundry agents or fallback processing.
+    Analyze a document using Azure AI Foundry agents.
     
     This endpoint processes documents through the sequential workflow:
     1. Architecture Detail Extractor - identifies architectural patterns and components
@@ -298,7 +173,7 @@ async def analyze_document(request: DocumentAnalysisRequest):
             "type": "document_analysis"
         }
         
-        # Process using EnhancedPromptProcessor
+        # Process using PromptProcessor
         try:
             analysis_result = await processor_instance.process_document_analysis(payload)
         except RuntimeError as e:
@@ -321,8 +196,7 @@ async def analyze_document(request: DocumentAnalysisRequest):
         # Extract result information
         if isinstance(analysis_result, dict) and analysis_result.get("success"):
             result_data = analysis_result.get("result", {})
-            processing_type = analysis_result.get("processing_type", "unknown")
-            foundry_available = analysis_result.get("foundry_available", False)
+            processing_type = analysis_result.get("processing_type", "azure_foundry_agents")
             agents_used = analysis_result.get("agents_used", [])
             shared_thread_id = analysis_result.get("shared_thread_id")
             
@@ -334,7 +208,6 @@ async def analyze_document(request: DocumentAnalysisRequest):
                 processing_time=round(processing_time, 3),
                 timestamp=datetime.utcnow().isoformat(),
                 processing_type=processing_type,
-                foundry_available=foundry_available,
                 agents_used=agents_used,
                 shared_thread_id=shared_thread_id
             )
@@ -451,7 +324,7 @@ async def analyze_pdf_document(
             }
         }
         
-        # Process using EnhancedPromptProcessor
+        # Process using PromptProcessor
         try:
             logger.info("=== API: ABOUT TO CALL PROCESSOR.PROCESS_DOCUMENT_ANALYSIS ===")
             logger.info(f"Processor instance type: {type(processor_instance)}")
@@ -487,8 +360,7 @@ async def analyze_pdf_document(
             if isinstance(result_data, dict):
                 result_data["pdf_extraction_metadata"] = extraction_result
             
-            processing_type = analysis_result.get("processing_type", "unknown")
-            foundry_available = analysis_result.get("foundry_available", False)
+            processing_type = analysis_result.get("processing_type", "azure_foundry_agents")
             agents_used = analysis_result.get("agents_used", [])
             shared_thread_id = analysis_result.get("shared_thread_id")
             
@@ -500,7 +372,6 @@ async def analyze_pdf_document(
                 processing_time=round(processing_time, 3),
                 timestamp=datetime.utcnow().isoformat(),
                 processing_type=processing_type,
-                foundry_available=foundry_available,
                 agents_used=agents_used,
                 shared_thread_id=shared_thread_id
             )
@@ -563,18 +434,16 @@ async def get_status():
 async def root():
     """Root endpoint with API information."""
     return {
-        "message": "Enhanced Document Analysis API",
+        "message": "Multi-Agent Document Analysis API",
         "version": "2.0.0",
         "capabilities": {
-            "essay_evaluation": "AI-powered essay evaluation with skills assessment",
             "document_analysis": "Sequential document analysis using Azure AI Foundry agents",
             "pdf_analysis": "PDF document analysis with text extraction and AI processing",
-            "fallback_processing": "Automatic fallback to traditional processing when agents unavailable"
+            "multi_agent_workflow": "Architecture and Azure resources analysis via specialized agents"
         },
         "endpoints": {
             "health": "/health",
             "status": "/status",
-            "evaluate": "/evaluate",
             "analyze_document": "/analyze-document",
             "analyze_pdf": "/analyze-pdf",
             "docs": "/docs"

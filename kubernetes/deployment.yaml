@@ -172,7 +172,7 @@ data:
   api-version: "2024-12-01-preview"  # Replace with your preferred API version
   
   # Azure Service Bus Configuration
-  service-bus-queue-name: "essay-evaluation-queue"  # Replace with your actual queue name
+  service-bus-queue-name: "document-analysis-queue"  # Replace with your actual queue name
   
   # Managed Identity Configuration
   client-id: "3bb6eaaf-4f1c-4ae0-a6fc-7d7bf0c8a474"

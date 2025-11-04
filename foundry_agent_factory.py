@@ -233,7 +233,7 @@ class FoundryAgentFactory:
     def _register_plugins(self, kernel: Kernel, required_plugins: List[str]):
         """Register plugins for the kernel"""
         plugin_registry = {
-            "PDFReaderPlugin": lambda: PDFReaderPlugin(),
+            #"PDFReaderPlugin": lambda: PDFReaderPlugin(),
             "MicrosoftLearnMcpPlugin": lambda: MicrosoftLearnMcpPlugin()
         }
         
