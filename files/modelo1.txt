@@ -1,0 +1,7 @@
+1 frontend 8 vcore 32GB RAM
+1 backend 16 vcore 32GB RAM
+backup diario
+SLA de 99.99% ao ano
+precisa de ter cdn no frontend
+waf precisa de owasp top10 API
+anti ddos

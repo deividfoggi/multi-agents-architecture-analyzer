@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
-from semantic_kernel.functions import kernel_function
 
 
 @dataclass
@@ -34,10 +33,6 @@ class XLSXExtractionResult:
 class XLSXReaderPlugin:
     """Plugin for reading and extracting data from XLSX files."""
 
-    @kernel_function(
-        name="extract_xlsx_data",
-        description="Extracts data from an XLSX file (Excel spreadsheet). Supports base64 encoded content or file paths. Returns data from all sheets with metadata.",
-    )
     def extract_xlsx_data(
         self,
         xlsx_content: Optional[str] = None,
@@ -123,10 +118,6 @@ class XLSXReaderPlugin:
                 error_message=f"Error extracting XLSX data: {str(e)}",
             )
 
-    @kernel_function(
-        name="extract_xlsx_from_base64",
-        description="Extracts data from a base64 encoded XLSX file.",
-    )
     def extract_xlsx_from_base64(
         self,
         base64_content: str,
@@ -147,10 +138,6 @@ class XLSXReaderPlugin:
             max_rows_per_sheet=max_rows_per_sheet,
         )
 
-    @kernel_function(
-        name="extract_xlsx_from_file",
-        description="Extracts data from an XLSX file given its file path.",
-    )
     def extract_xlsx_from_file(
         self,
         file_path: str,
@@ -171,10 +158,6 @@ class XLSXReaderPlugin:
             max_rows_per_sheet=max_rows_per_sheet,
         )
 
-    @kernel_function(
-        name="get_xlsx_metadata",
-        description="Gets metadata from an XLSX file without extracting full content. Useful for checking sheet names and structure.",
-    )
     def get_xlsx_metadata(
         self,
         xlsx_content: Optional[str] = None,

@@ -1,59 +1,72 @@
+Metadata-Version: 2.4
+Name: multi-agents-architecture-analyzer
+Version: 0.1.0
+Summary: Multi-Agent Architecture Analyzer using Azure AI Foundry Agent Service
+Author-email: Deivid de Foggi <dfoggi@microsoft.com>
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: semantic-kernel>=1.34.0
+Requires-Dist: azure-ai-inference
+Requires-Dist: azure-ai-projects>=1.0.0
+Requires-Dist: azure-storage-blob>=12.0.0
+Requires-Dist: azure-identity>=1.0.0
+Requires-Dist: python-dotenv>=0.19.0
+Requires-Dist: pytest>=8.0.0
+Requires-Dist: pytest-asyncio>=0.23.0
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: fastapi>=0.104.1
+Requires-Dist: uvicorn[standard]>=0.24.0
+Requires-Dist: PyMuPDF>=1.23.0
+Requires-Dist: requests>=2.28.0
+Requires-Dist: python-multipart>=0.0.6
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+
 # Multi-Agent Architecture Analyzer
 
-A production-ready Python application that integrates **Microsoft Agent Framework** for intelligent document analysis and architecture evaluation. Built with modern Python best practices, featuring **direct MCP connectivity**, modular package structure, comprehensive error handling, and flexible deployment options.
-
-## ✨ What's New in v3.0 (Agent Framework)
-
-### 🎯 Microsoft Agent Framework Integration
-- **Direct MCP Connectivity:** No Azure AI Foundry portal configuration required
-- **Local Development:** Run fully locally without cloud dependencies for MCP
-- **Simplified Environment:** Reduced to just Azure OpenAI credentials (no project endpoints!)
-- **Agent Framework SDK:** Using `agent-framework>=0.1.0` for agent orchestration
-- **HostedMCPTool:** Direct HTTP connection to MCP servers (Microsoft Learn documentation)
-- **FunctionTool API:** Azure Retail Prices API integrated as native tool
-
-**Migration Guide:** See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for detailed migration steps from Azure AI SDK
+A production-ready Python application that integrates **Azure AI Foundry Agents** using Semantic Kernel for intelligent document analysis and architecture evaluation. Built with modern Python best practices, featuring a modular package structure, comprehensive error handling, and flexible deployment options.
 
 ## 🚀 Key Features
 
 ### Core Functionality
 - **RESTful API:** FastAPI-based API with automatic documentation, validation, and OpenAPI specification
 - **Modular Architecture:** Well-organized package structure following Python best practices
-- **Microsoft Agent Framework:** Native agent orchestration with specialized agents and tools
-- **Direct MCP Integration:** HostedMCPTool for Microsoft Learn documentation access
-- **Azure Pricing API:** FunctionTool integration for cost calculations
+- **Azure AI Foundry Integration:** Native Semantic Kernel orchestration with specialized agents
 - **PDF Processing:** Advanced PDF text extraction and analysis capabilities
 - **Robust Error Handling:** Comprehensive error handling with graceful fallback mechanisms
 - **Environment-based Configuration:** Secure configuration management through environment variables
 
-### 🤖 Multi-Agent System (7 Specialized Agents)
+### 🤖 Multi-Agent System
 - **Sequential Agent Workflows:** Coordinated multi-agent processing with shared context
 - **Specialized Agents:**
-  - **Extractor Agent:** Identifies architectural patterns, components, and design decisions
-  - **Orchestrator Agent:** Coordinates specialist agents and consolidates recommendations
-  - **Infrastructure Specialist:** Analyzes networking, security, and connectivity resources (MCP Tool)
-  - **Database Specialist:** Analyzes databases, caching, and data storage services (MCP Tool)
-  - **Container Specialist:** Analyzes container orchestration and registry services (MCP Tool)
-  - **Compute Specialist:** Analyzes compute, web hosting, and serverless resources (MCP Tool)
-  - **Cost Calculator:** Calculates costs using Azure Retail Prices API (Function Tool)
-- **MCP Tools:** 4 specialists use HostedMCPTool for Microsoft Learn documentation
-- **Function Tools:** Cost calculator uses FunctionTool for Azure pricing API
-- **Prompt Templates:** Each agent configured with specific prompt from template files
+  - **Architecture Detail Extractor:** Identifies architectural patterns, components, and design decisions
+  - **Azure Resources Specialist:** Analyzes Azure services, configurations, and provides recommendations
+- **Conversation Continuity:** Maintains context across agent interactions
+- **Automatic Fallback:** Seamlessly handles agent unavailability
 
 ### 🏗️ Modern Architecture
 - **SOLID Principles:** Clean separation of concerns with delegated responsibilities
-- **Workflow Manager:** Centralized workflow orchestration in AgentFrameworkWorkflowManager
-- **Tool Integration:** Direct MCP server connectivity and Azure API integration
+- **Factory Pattern:** Dynamic agent creation and management
+- **Plugin System:** Extensible architecture with custom Semantic Kernel plugins
 - **Package Structure:** Installable Python package with proper namespace organization
 - **Type Safety:** Type hints throughout the codebase
-- **No Cloud Config:** No Azure AI Foundry project or portal configuration needed
 
-### 📄 Document Processing Capabilities
-- **PDF Plugin:** Custom plugin for PDF text extraction using PyMuPDF
-- **Excel Plugin:** Custom plugin for Excel data extraction using openpyxl
-- **Multiple Input Formats:** Supports file uploads and base64-encoded data
-- **Comprehensive Metadata:** Extracts page count, file size, sheet information
-- **Seamless Integration:** Integrated with agents for intelligent document analysis
+### 📄 PDF Processing Capabilities
+- **Native PDF Plugin:** Custom Semantic Kernel plugin for PDF text extraction using PyMuPDF
+- **Multiple Input Formats:** Supports file uploads and base64-encoded PDF data
+- **Comprehensive Metadata:** Extracts page count, file size, and processing information
+- **Seamless Integration:** Integrated with AI agents for intelligent document analysis
 
 ## 📁 Project Structure
 
@@ -62,8 +75,11 @@ demo/
 ├── src/                                    # Source code package
 │   └── analyzer/                          # Main application package
 │       ├── api.py                         # FastAPI application & endpoints
+│       ├── agents/                        # Agent management
+│       │   ├── agent_initialization_manager.py
+│       │   └── foundry_agent_factory.py
 │       ├── workflows/                     # Workflow execution
-│       │   ├── agent_framework_workflow_manager.py  # 🆕 Agent Framework orchestrator
+│       │   ├── sequential_workflow_manager.py
 │       │   └── payload_processor.py
 │       ├── processors/                    # Data processing
 │       │   ├── prompt_processor.py
@@ -71,9 +87,8 @@ demo/
 │       ├── extractors/                    # Data extraction
 │       │   └── insights_extractor.py
 │       └── plugins/                       # Plugin system
-│           ├── azure_pricing_plugin.py    # Azure Retail Prices API
-│           ├── pdf_reader_plugin.py
-│           └── xlsx_reader_plugin.py
+│           ├── microsoft_learn_mcp_plugin.py
+│           └── pdf_reader_plugin.py
 ├── kubernetes/                            # Kubernetes deployment configs
 ├── main.py                               # Application entry point
 ├── requirements.txt                      # Python dependencies
@@ -150,81 +165,26 @@ docker run -e MODEL_DEPLOYMENT_NAME="gpt-4" \
            analyzer:latest
 ```
 
-## 🌐 Web Interface
-
-The application includes a modern, browser-based interface for easy document analysis.
-
-### Features
-- **Drag & Drop Upload**: Simple file upload with drag-and-drop support
-- **Multi-Format Support**: Analyze .txt, .pdf, .xlsx, and .xls files
-- **Real-Time Progress**: Visual feedback during analysis
-- **Structured Results**: Results displayed in organized cards and sections
-- **Agent Analysis Details**: Expandable sections showing each agent's contribution
-- **Azure Services Visualization**: Color-coded badges for identified services
-- **Architecture Patterns**: Clear list of detected architectural patterns
-- **Recommendations**: Highlighted suggestions for improvements
-
-### Usage
-
-1. **Start the server**:
-   ```bash
-   python main.py
-   ```
-
-2. **Open your browser**:
-   ```
-   http://localhost:8080
-   ```
-
-3. **Upload a document**:
-   - Drag and drop a file onto the upload area, or
-   - Click to browse and select a file
-
-4. **View results**:
-   - Processing time and status summary
-   - Azure services identified
-   - Architecture patterns detected
-   - Detailed agent analysis (expandable)
-   - Recommendations
-
-### Supported File Types
-- **Text files** (.txt): Plain text documents
-- **PDF files** (.pdf): PDF documents with extractable text
-- **Excel files** (.xlsx, .xls): Excel spreadsheets
-
 ## ⚙️ Configuration
 
 ### Environment Variables
 
-Create a `.env` file with **only 5 required variables** (no agent IDs needed!):
+Create a `.env` file based on `.env.template`:
 
 ```bash
-# Azure OpenAI Configuration (Required)
-AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT=gpt-4
-AZURE_OPENAI_API_VERSION=2024-05-01-preview
+cp .env.template .env
 ```
 
-#### ✨ What's Different in v3.0?
+#### Required Variables
+- `MODEL_DEPLOYMENT_NAME` - AI model deployment name
+- `AI_API_KEY` - Azure AI API key
+- `AI_ENDPOINT` - Azure AI endpoint URL
+- `API_VERSION` - Azure AI API version
 
-**Before (v2.0 with Azure AI SDK):** Required Azure AI Foundry project
-```bash
-# ❌ NO LONGER NEEDED!
-AZURE_AI_PROJECT_ENDPOINT=https://your-project.services.ai.azure.com/api/projects/your-project
-# Agent IDs discovered dynamically, but still needed project configuration
-```
-
-**Now (v3.0 with Agent Framework):** Only Azure OpenAI credentials!
-- **No Azure AI Foundry project needed**
-- **No portal configuration for MCP servers**
-- **Direct MCP connectivity** via HostedMCPTool
-- **Simpler deployment** - just Azure OpenAI credentials
-- **Backward compatible** - still accepts legacy variable names (MODEL_DEPLOYMENT_NAME, AI_API_KEY, etc.)
-
-#### MCP Server Configuration (Optional)
-- `MCP_SERVER_URL` - MCP server endpoint (default: https://learn.microsoft.com/api/mcp)
-- `MCP_SERVER_LABEL` - MCP server label (default: microsoft_learn)
+#### Azure AI Foundry (Optional - for enhanced agent processing)
+- `AZURE_AI_PROJECT_ENDPOINT` - Azure AI Foundry project endpoint
+- `ARCHITECTURE_EXTRACTOR_AGENT_ID` - Architecture analysis agent ID
+- `AZURE_RESOURCES_SPECIALIST_AGENT_ID` - Azure resources specialist agent ID
 
 #### Application Configuration (Optional)
 - `HOST` - API host address (default: 0.0.0.0)
@@ -232,38 +192,19 @@ AZURE_AI_PROJECT_ENDPOINT=https://your-project.services.ai.azure.com/api/project
 - `LOG_LEVEL` - Logging level (default: INFO)
 - `RELOAD` - Enable auto-reload for development (default: false)
 
-## 🎯 Agent Architecture (Agent Framework)
-
-The application uses **Microsoft Agent Framework** with 7 specialized agents:
-
-**Agents:**
-1. **Extractor Agent** - Identifies architectural patterns and components
-2. **Orchestrator Agent** - Coordinates specialist agents and consolidates results
-3. **Infrastructure Specialist** - Analyzes networking and security (with MCP Tool)
-4. **Database Specialist** - Analyzes databases and storage (with MCP Tool)
-5. **Container Specialist** - Analyzes containers and orchestration (with MCP Tool)
-6. **Compute Specialist** - Analyzes compute and web hosting (with MCP Tool)
-7. **Cost Calculator** - Calculates costs using Azure Retail Prices API (with Function Tool)
-
-**Tools:**
-- **HostedMCPTool**: Direct HTTP connection to Microsoft Learn MCP server
-- **FunctionTool**: Native function calling for Azure Retail Prices API
-
-**No Portal Configuration:** All agents and tools configured in code, no Azure AI Foundry setup needed!
-
 ### AI Provider Configuration
 
-The application uses **Azure OpenAI** directly through Agent Framework:
+The application supports multiple AI provider configurations:
 
-- **Agent Framework SDK**: Latest `agent-framework>=0.1.0` package
-- **Direct MCP Integration**: HostedMCPTool for Microsoft Learn documentation
-- **Pricing API**: FunctionTool for Azure cost calculations
-- **Prompt Templates**: Agent instructions loaded from template files
-- **Local Development**: Run fully locally without cloud dependencies
+1. **Azure AI Foundry**: Multi-agent workflows with Semantic Kernel
+2. **Azure OpenAI**: Direct Azure OpenAI service integration
+3. **Azure AI Inference**: Azure AI Inference endpoint integration
+
+The system automatically detects available providers and falls back gracefully when agents are unavailable.
 
 ## 📚 API Reference
 
-### Document Analysis Endpoints
+### Available Endpoints
 
 #### 1. Health Check
 Check API status and configuration:
@@ -296,16 +237,7 @@ curl -X POST "http://localhost:8080/analyze-pdf" \
      -F "analysis_parameters={\"focus_areas\": [\"architecture\"], \"detail_level\": \"comprehensive\"}"
 ```
 
-#### 4. Excel Document Analysis
-Upload and analyze Excel documents:
-
-```bash
-curl -X POST "http://localhost:8080/analyze-excel" \
-     -F "file=@/path/to/document.xlsx" \
-     -F "analysis_parameters={\"focus_areas\": [\"architecture\", \"azure_resources\"], \"detail_level\": \"comprehensive\"}"
-```
-
-#### 5. Interactive API Documentation
+#### 4. Interactive API Documentation
 Access comprehensive API documentation at:
 - **Swagger UI**: `http://localhost:8080/docs`
 - **ReDoc**: `http://localhost:8080/redoc`
@@ -350,7 +282,6 @@ The application follows a modular architecture with clear separation of concerns
 
 #### Plugin System
 - **PDFReaderPlugin**: PDF text extraction using PyMuPDF
-- **XLSXReaderPlugin**: Excel data extraction using openpyxl
 - **MicrosoftLearnMcpPlugin**: Integration with Microsoft documentation
 - Extensible architecture for custom plugins
 

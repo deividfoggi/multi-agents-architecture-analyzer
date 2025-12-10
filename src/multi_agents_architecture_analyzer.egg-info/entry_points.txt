@@ -1,0 +1,2 @@
+[console_scripts]
+analyzer = main:main

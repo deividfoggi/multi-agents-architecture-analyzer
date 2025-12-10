@@ -1,6 +1,6 @@
 """
-PDF Reader Plugin for Semantic Kernel
-Provides PDF text extraction functionality as a native Python function plugin.
+PDF Reader Plugin for Azure AI agents.
+Provides PDF text extraction functionality.
 """
 import logging
 import fitz  # PyMuPDF
@@ -8,7 +8,6 @@ import base64
 import io
 from typing import Optional, Dict, Any
 from datetime import datetime
-from semantic_kernel.functions import kernel_function
 from dataclasses import dataclass
 
 
@@ -44,10 +43,6 @@ class PDFReaderPlugin:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
     
-    @kernel_function(
-        description="Extract text content from a PDF file",
-        name="extract_pdf_text"
-    )
     def extract_pdf_text(self, pdf_data: str, data_type: str = "base64") -> str:
         """
         Extract text content from PDF data.
@@ -91,10 +86,6 @@ class PDFReaderPlugin:
             }
             return json.dumps(error_result)
     
-    @kernel_function(
-        description="Extract text content from base64-encoded PDF data",
-        name="extract_pdf_from_base64"
-    )
     def extract_pdf_from_base64(self, base64_data: str) -> str:
         """
         Extract text content from base64-encoded PDF data.
@@ -107,10 +98,6 @@ class PDFReaderPlugin:
         """
         return self.extract_pdf_text(base64_data, "base64")
     
-    @kernel_function(
-        description="Extract text content from PDF file path",
-        name="extract_pdf_from_file"
-    )
     def extract_pdf_from_file(self, file_path: str) -> str:
         """
         Extract text content from PDF file path.
@@ -194,10 +181,6 @@ class PDFReaderPlugin:
             doc.close()  # Ensure document is closed
             raise Exception(f"Text extraction failed: {str(e)}")
     
-    @kernel_function(
-        description="Get PDF metadata without extracting full text",
-        name="get_pdf_metadata"
-    )
     def get_pdf_metadata(self, pdf_data: str, data_type: str = "base64") -> str:
         """
         Get PDF metadata (page count, file size) without extracting full text.

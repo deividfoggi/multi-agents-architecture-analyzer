@@ -24,23 +24,35 @@ class ResultFormatter:
         Format results from Azure AI Foundry agents.
         
         Args:
-            foundry_result: Raw result from foundry workflow
+            foundry_result: Raw result from foundry workflow (already formatted by format_workflow_result)
             status: Overall status of the workflow
             
         Returns:
             Formatted result dictionary
         """
-        # Extract workflow info from foundry_result
+        # foundry_result is already formatted by format_workflow_result with this structure:
+        # {
+        #   "success": True,
+        #   "status": "success", 
+        #   "result": {"responses": [...], "structured_result": {...}},
+        #   "timestamp": "...",
+        #   "metadata": {...}
+        # }
+        
+        # Extract nested result data to avoid double-nesting
+        nested_result = foundry_result.get("result", {})
+        
+        # Extract workflow info
         success = foundry_result.get("success", status == "success")
-        processing_type = foundry_result.get("workflow_type", "sequential_foundry_agents")
+        processing_type = foundry_result.get("metadata", {}).get("workflow_type", "sequential_foundry_agents")
         agents_used = foundry_result.get("agents_used", [])
         shared_thread_id = foundry_result.get("shared_thread_id")
         
         return {
             "success": success,
             "status": status,
-            "result": foundry_result,
-            "timestamp": datetime.now().isoformat(),
+            "result": nested_result,  # Use the nested result, not the entire foundry_result
+            "timestamp": foundry_result.get("timestamp", datetime.now().isoformat()),
             "processing_type": processing_type,
             "foundry_available": True,
             "agents_used": agents_used,
@@ -136,15 +148,54 @@ class ResultFormatter:
             status: Overall workflow status
             
         Returns:
-            Formatted workflow result
+            Formatted workflow result compatible with API expectations
         """
+        # Debug logging
+        logger.info(f"=== FORMAT_WORKFLOW_RESULT DEBUG ===")
+        logger.info(f"Number of agent results: {len(agents_results)}")
+        logger.info(f"Insights provided: {insights is not None}")
+        if insights:
+            logger.info(f"Insights keys: {list(insights.keys())}")
+            logger.info(f"Azure services count: {len(insights.get('azure_services', []))}")
+            logger.info(f"Key findings count: {len(insights.get('key_findings', []))}")
+            logger.info(f"Recommendations count: {len(insights.get('recommendations', []))}")
+            logger.info(f"Summary length: {len(insights.get('summary', ''))}")
+        
+        # Transform agents_results to responses format expected by API
+        responses = [
+            {
+                "agent": result.get("agent", "Unknown"),
+                "content": result.get("response", ""),
+                "timestamp": result.get("timestamp", datetime.now().isoformat()),
+                "duration": result.get("duration", 0),
+                "status": "success"
+            }
+            for result in agents_results
+        ]
+        
+        # Format structured_result from insights
+        structured_result = {}
+        if insights:
+            structured_result = {
+                "azure_services": insights.get("azure_services", []),
+                "architecture_patterns": insights.get("key_findings", []),  # Map key_findings to architecture_patterns
+                "recommendations": insights.get("recommendations", []),
+                "summary": insights.get("summary", "")
+            }
+            logger.info(f"Structured result created with {len(structured_result)} fields")
+        else:
+            logger.warning("No insights provided - structured_result will be empty")
+        
         result = {
+            "success": True,
             "status": status,
-            "agents_results": agents_results,
+            "result": {
+                "responses": responses,
+                "structured_result": structured_result
+            },
             "timestamp": datetime.now().isoformat()
         }
         
-        if insights:
-            result["insights"] = insights
+        logger.info(f"Final result structure - responses: {len(responses)}, structured_result fields: {len(structured_result)}")
         
         return result
